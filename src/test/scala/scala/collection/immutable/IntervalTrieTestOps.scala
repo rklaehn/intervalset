@@ -89,4 +89,13 @@ private[immutable] object IntervalTrieTestOps {
   def isValid(a:IntervalTrie) : Boolean = {
     a!=null && (head(a).key == 0L) && isValid0(a0 = false, a, as = false)
   }
+
+  implicit class MergeEnhancement(private val lhs:IntervalTrie) extends AnyVal {
+
+    def merge(rhs:Leaf) = merge0(lhs,rhs)
+
+    def support:Traversable[Long] = new Traversable[Long] {
+      override def foreach[U](f: (Long) => U): Unit = lhs.foreachKey(f)
+    }
+  }
 }

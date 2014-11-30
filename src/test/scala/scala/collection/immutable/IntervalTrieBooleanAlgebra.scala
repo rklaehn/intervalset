@@ -2,7 +2,7 @@ package scala.collection.immutable
 
 import spire.algebra.{Eq, BooleanAlgebra}
 
-object IntervalTreeBooleanAlgebra {
+object IntervalTrieBooleanAlgebra {
 
   implicit object algebra extends BooleanAlgebra[IntervalTrie] with Eq[IntervalTrie] {
     import IntervalTrie._

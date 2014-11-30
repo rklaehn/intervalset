@@ -480,7 +480,7 @@ private[immutable] object IntervalTrie {
    * @param rhs the leaf to be merged. Must not be null
    * @return a new tree with rhs merged in
    */
-  private def merge0(lhs: IntervalTrie, rhs: Leaf): IntervalTrie = lhs match {
+  def merge0(lhs: IntervalTrie, rhs: Leaf): IntervalTrie = lhs match {
     case lhs@Branch(prefix, level, left, right, _) =>
       if (!hasMatchAt(rhs.key, prefix, level))
         join(rhs.key, rhs, prefix, lhs)
