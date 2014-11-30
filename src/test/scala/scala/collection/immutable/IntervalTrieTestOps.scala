@@ -77,8 +77,8 @@ private[immutable] object IntervalTrieTestOps {
       isValid0(a.after ^ as, a.right, as1)
     case a:Leaf =>
       val before = a0
-      val at = (a.at ^ as)
-      val after = (a.after ^ as)
+      val at = a.at ^ as
+      val after = a.after ^ as
       val same = before == at && at == after
       !same
     case _ =>

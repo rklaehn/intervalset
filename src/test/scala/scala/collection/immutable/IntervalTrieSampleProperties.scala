@@ -32,8 +32,6 @@ object IntervalTrieSampleProperties extends Properties("TreeValueSet2.Sample") {
       val sameBefore = (value == 0) || (r.before(value) === op(a.before(value), b.before(value)))
       val sameAt = r.at(value) === op(a.at(value), b.at(value))
       val sameAfter = r.after(value) === op(a.after(value), b.after(value))
-      if(!sameBefore)
-        println("huh")
       sameBefore & sameAt & sameAfter
     }
   }
@@ -47,29 +45,6 @@ object IntervalTrieSampleProperties extends Properties("TreeValueSet2.Sample") {
       val sameAfter = r.after(value) === op(a.after(value), b.after(value), c.after(value))
       sameBefore & sameAt & sameAfter
     }
-  }
-
-  def test = {
-    import IntervalTrie._
-    val a = zero merge point(29) merge point(51) merge point(88)
-    val b = zero merge startAt(52)
-    val na = (a flip true)
-    val r = (a flip true) | b
-    val r0 = negate(a) | b
-    println("a   =" + IntervalTrie.format(a))
-    println("!a  =" + IntervalTrie.format(na))
-    println("b   =" + IntervalTrie.format(b))
-    println("!a|b=" + IntervalTrie.format(r))
-    println("!a|b=" + IntervalTrie.format(r0))
-
-    println("a   =" + a)
-    println("!a  =" + na)
-    println("b   =" + b)
-    println("!a|b=" + r)
-    println("!a|b=" + r0)
-    val ok = binarySampleTest(a, b, r, !_ | _)
-    println(ok)
-    ok
   }
 
   property("sample_not") = forAll { a: IntervalTrie =>

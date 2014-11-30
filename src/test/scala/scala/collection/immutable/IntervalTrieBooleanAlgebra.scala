@@ -7,8 +7,7 @@ object IntervalTrieBooleanAlgebra {
   implicit object algebra extends BooleanAlgebra[IntervalTrie] with Eq[IntervalTrie] {
     import IntervalTrie._
 
-    def eqv(x: IntervalTrie, y: IntervalTrie) =
-      x == y
+    def eqv(x: IntervalTrie, y: IntervalTrie) = x == y
 
     def zero = IntervalTrie.zero
 
@@ -19,5 +18,7 @@ object IntervalTrieBooleanAlgebra {
     def or(a: IntervalTrie, b: IntervalTrie) = OrCalculator(a,b)
 
     def and(a: IntervalTrie, b: IntervalTrie) = AndCalculator(a, b)
+
+    override def xor(a: IntervalTrie, b:IntervalTrie) = XorCalculator(a, b)
   }
 }
