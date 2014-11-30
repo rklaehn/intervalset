@@ -60,18 +60,18 @@ For sets with such a structure, the operation has to traverse to the leafs of bo
 
 ```
 Full traversal benchmark (n=100000)
-Benchmark for a | b (60 calls in 1.397 s)
-  Time:    2.909 ms   95% CI 2.745 ms - 3.072 ms   (n=20)
-  Garbage: 28.13 us   (n=2 sweeps measured)
-Benchmark for a & b (140 calls in 3.495 s)
-  Time:    2.985 ms   95% CI 2.882 ms - 3.088 ms   (n=20)
-  Garbage: 25.00 us   (n=3 sweeps measured)
-Benchmark for a ^ b (60 calls in 1.466 s)
-  Time:    11.94 ms   95% CI 11.30 ms - 12.59 ms   (n=20)
-  Garbage: 175.0 us   (n=1 sweeps measured)
-Benchmark for ~a (60 calls in 1.416 s)
-  Time:    11.18 ns   95% CI 10.57 ns - 11.80 ns   
-  Garbage: 0.02384 ns   (n=3 sweeps measured)
+Benchmark for a | b (140 calls in 2.713 s)
+  Time:    2.275 ms   95% CI 2.153 ms - 2.398 ms   (n=19)
+  Garbage: 23.44 us   (n=3 sweeps measured)
+Benchmark for a & b (60 calls in 1.244 s)
+  Time:    2.586 ms   95% CI 2.437 ms - 2.736 ms   (n=20)
+  Garbage: 15.63 us   (n=1 sweeps measured)
+Benchmark for a ^ b (140 calls in 2.058 s)
+  Time:    3.492 ms   95% CI 3.344 ms - 3.640 ms   (n=20)
+  Garbage: 71.88 us   (n=2 sweeps measured)
+Benchmark for ~a (140 calls in 2.721 s)
+  Time:    9.124 ns   95% CI 8.824 ns - 9.424 ns   (n=19)
+  Garbage: 0.03576 ns   (n=5 sweeps measured)
 ```
 
 ### Cutoff
@@ -85,14 +85,16 @@ For this case, a contiguous interval in b will overlap many intervals in a, so t
 
 
 ```
-Benchmark for a | b (140 calls in 1.779 s)
-  Time:    24.11 us   95% CI 22.84 us - 25.38 us   (n=20)
-Benchmark for a & b (140 calls in 1.855 s)
-  Time:    25.94 us   95% CI 24.61 us - 27.27 us   (n=20)
-  Garbage: 24.41 ns   (n=1 sweeps measured)
-Benchmark for a ^ b (60 calls in 1.444 s)
-  Time:    92.99 us   95% CI 88.71 us - 97.28 us   (n=20)
-  Garbage: 195.3 ns   (n=2 sweeps measured)
+Cutoff benchmark (n=100000)
+Benchmark for a | b (140 calls in 2.500 s)
+  Time:    33.89 us   95% CI 32.79 us - 34.99 us   (n=19)
+  Garbage: 219.7 ns   (n=2 sweeps measured)
+Benchmark for a & b (140 calls in 2.329 s)
+  Time:    32.64 us   95% CI 31.40 us - 33.88 us   (n=20)
+  Garbage: 146.5 ns   (n=3 sweeps measured)
+Benchmark for a ^ b (140 calls in 1.827 s)
+  Time:    50.80 us   95% CI 48.61 us - 53.00 us   (n=20)
+  Garbage: 195.3 ns   (n=4 sweeps measured)
 ```
 
 ### Analysis

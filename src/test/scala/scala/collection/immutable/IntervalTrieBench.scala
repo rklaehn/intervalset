@@ -11,8 +11,7 @@ object IntervalTrieBench extends App {
     IntervalTrieArbitrary.makeProfile(false, support, Array.fill(support.length)(0))
   }
 
-  // val thyme = Thyme.warmed(verbose = println)
-  val thyme = new Thyme
+  val thyme = Thyme.warmed(verbose = println)
   println("starting benchmark")
   // in this test, we have to go all the way down to the leaves in all cases
   def fullTraversalTest(n:Int) : Unit = {
