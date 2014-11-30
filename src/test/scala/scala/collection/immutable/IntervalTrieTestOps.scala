@@ -69,16 +69,20 @@ private[immutable] object IntervalTrieTestOps {
   }
 
   private def isValid0(a0:Boolean, a:IntervalTrie, as:Boolean) : Boolean = a match {
-    case a:Branch =>
+    case a:Branch if a.level == levelAbove(a.left.prefix, a.right.prefix) =>
+      val m = maskAbove(a.prefix, a.level)
       val as1 = as ^ a.s
-      isValid0(a0, a.left, as1) && isValid0(a.after ^ as, a.right, as1)
+      ((a.left.prefix & m) == (a.right.prefix & m)) &&
+      isValid0(a0, a.left, as1) &&
+      isValid0(a.after ^ as, a.right, as1)
     case a:Leaf =>
       val before = a0
       val at = (a.at ^ as)
       val after = (a.after ^ as)
       val same = before == at && at == after
       !same
-    case null =>
+    case _ =>
+      // this includes null and broken branches
       false
   }
 

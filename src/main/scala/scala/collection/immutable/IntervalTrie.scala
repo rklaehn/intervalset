@@ -1,23 +1,21 @@
 package scala.collection.immutable
 
-import scala.collection.AbstractTraversable
-
 private[immutable] object IntervalTrie {
 
   import java.lang.Long.numberOfLeadingZeros
 
-  @inline private final def unsigned_<(i: Long, j: Long) = (i < j) ^ (i < 0L) ^ (j < 0L)
+  @inline final def unsigned_<(i: Long, j: Long) = (i < j) ^ (i < 0L) ^ (j < 0L)
 
-  @inline private final def levelAbove(a:Long, b:Long) : Byte =
+  @inline final def levelAbove(a:Long, b:Long) : Byte =
     (63 - numberOfLeadingZeros(a ^ b)).toByte
 
-  @inline private final def maskAbove(prefix:Long, bit:Byte) =
+  @inline final def maskAbove(prefix:Long, bit:Byte) =
     prefix & ((-1L << bit) << 1)
 
-  @inline private final def zeroAt(value:Long, bit:Byte) =
+  @inline final def zeroAt(value:Long, bit:Byte) =
     (value & (1L << bit)) == 0L
 
-  @inline private final def hasMatchAt(key: Long, prefix: Long, level: Byte) =
+  @inline final def hasMatchAt(key: Long, prefix: Long, level: Byte) =
     maskAbove(key, level) == prefix
 
   def join(p1 : Long, t1 : IntervalTrie, p2 : Long, t2 : IntervalTrie) : IntervalTrie = {
@@ -148,7 +146,8 @@ private[immutable] object IntervalTrie {
               // b fits into the right child of a
               branch(a_p, a_l, overlapA(a.left, as1, b0), op(a.mid ^ as, a.right, as1, b0, b, bs))
             }
-          case _ => unreachable
+          case _ =>
+            unreachable
         }
       } else if (b_l > a_l) {
         // b is larger => b must be a branch
@@ -165,7 +164,8 @@ private[immutable] object IntervalTrie {
               // a fits into the right child of b
               branch(b_p, b_l, overlapB(a0, b.left, bs1), op(a0, a, as, b.mid ^ bs, b.right, bs1))
             }
-          case _ => unreachable
+          case _ =>
+            unreachable
         }
       } else {
         // a_m == b_m, trees are the same size
