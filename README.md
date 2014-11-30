@@ -25,7 +25,7 @@ n = lhs.size + rhs.size
 
 |Operation|Time Complexity|Remark|
 |---|---|---|---|
-|membership test|O(log(n))|   |
+|membership&nbsp;test|O(log(n))|   |
 |insertion|O(log(n))|Insertion is not public. Complex sets are constructed by using union or intersection of simple sets|
 
 ## Memory usage
