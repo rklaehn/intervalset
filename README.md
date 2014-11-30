@@ -56,6 +56,22 @@ b = [1..3[, [5..7[, [9..11[, [13..15[, [17..19[ ...
 
 For sets with such a structure, the operation has to traverse to the leafs of both trees, and new branch nodes have to be constructed.
 
+```
+Full traversal benchmark (n=100000)
+Benchmark for a | b (60 calls in 1.397 s)
+  Time:    2.909 ms   95% CI 2.745 ms - 3.072 ms   (n=20)
+  Garbage: 28.13 us   (n=2 sweeps measured)
+Benchmark for a & b (140 calls in 3.495 s)
+  Time:    2.985 ms   95% CI 2.882 ms - 3.088 ms   (n=20)
+  Garbage: 25.00 us   (n=3 sweeps measured)
+Benchmark for a ^ b (60 calls in 1.466 s)
+  Time:    11.94 ms   95% CI 11.30 ms - 12.59 ms   (n=20)
+  Garbage: 175.0 us   (n=1 sweeps measured)
+Benchmark for ~a (60 calls in 1.416 s)
+  Time:    11.18 ns   95% CI 10.57 ns - 11.80 ns   
+  Garbage: 0.02384 ns   (n=3 sweeps measured)
+```
+
 ### Cutoff
 
 ```
@@ -63,4 +79,22 @@ a = [0..2[, [4..6[, [8..10[, [12..14[, [16..18[ ...
 b = [0..200[, [400..600[, [800..1000[, [1200..1400[, [1600..1800[ ...
 ```
 
-For this case, a contiguous interval in b will overlap many intervals in a, so traversal does not have to go all the way into the leaves.
+For this case, a contiguous interval in b will overlap many intervals in a, so traversal does not have to go all the way into the leaves. This allows keeping entire subtrees of a in the case of union and intersection, or _negating and keeping entire subtrees_ of a in case of xor.
+
+
+```
+Benchmark for a | b (140 calls in 1.779 s)
+  Time:    24.11 us   95% CI 22.84 us - 25.38 us   (n=20)
+Benchmark for a & b (140 calls in 1.855 s)
+  Time:    25.94 us   95% CI 24.61 us - 27.27 us   (n=20)
+  Garbage: 24.41 ns   (n=1 sweeps measured)
+Benchmark for a ^ b (60 calls in 1.444 s)
+  Time:    92.99 us   95% CI 88.71 us - 97.28 us   (n=20)
+  Garbage: 195.3 ns   (n=2 sweeps measured)
+```
+
+### Analysis
+
+As expected, negate is almost unmeasurably fast. It just creates a copy of the root node with a flag flipped. 
+Xor is slower than and/or, which is to be expected since the resulting profile is more complex
+There is a significant benefit in the case where subtrees can be reused, even in the case of xor.
