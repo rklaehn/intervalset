@@ -6,8 +6,6 @@ private[immutable] object IntervalTrie {
 
   import java.lang.Long.numberOfLeadingZeros
 
-  @inline private final def hash(value:Boolean) : Int = if(value) -1 else 0
-
   @inline private final def unsigned_<(i: Long, j: Long) = (i < j) ^ (i < 0L) ^ (j < 0L)
 
   @inline private final def levelAbove(a:Long, b:Long) : Byte =
