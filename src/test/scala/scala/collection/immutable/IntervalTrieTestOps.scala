@@ -1,7 +1,10 @@
 package scala.collection.immutable
 
+/**
+ * Operations that are just useful for testing
+ */
 private[immutable] object IntervalTrieTestOps {
-  import IntervalTrie._
+  import scala.collection.immutable.IntervalTrie._
 
   /**
    * Negates a tree by negating the leaves and building a new tree. This is just used for testing.

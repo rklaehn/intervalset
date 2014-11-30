@@ -4,6 +4,8 @@ private[immutable] object IntervalTrie {
 
   import java.lang.Long.numberOfLeadingZeros
 
+  @inline private final def hash(value:Boolean) : Int = if(value) -1 else 0
+
   @inline private final def unsigned_<(i: Long, j: Long) = (i < j) ^ (i < 0L) ^ (j < 0L)
 
   @inline private final def levelAbove(a:Long, b:Long) : Byte =
@@ -376,6 +378,12 @@ private[immutable] object IntervalTrie {
   def apply(elems : Leaf*) : IntervalTrie =
     nullToZero(elems.foldLeft(zero)(merge0))
 
+  /**
+   * A leaf. This is going to be changed to 4 different leaf types for the 4 possible combinations of at and after
+   * @param prefix the prefix, which in case of a leaf is identical to the key
+   * @param at the value exactly at the key
+   * @param after the value immediately after the key
+   */
   final case class Leaf(prefix: Long, at:Boolean, after:Boolean) extends IntervalTrie {
 
     /**
@@ -393,9 +401,22 @@ private[immutable] object IntervalTrie {
      * @param value true if the leaf shall be flipped
      */
     def flip(value:Boolean) : Leaf = if(value) copy(at = !at, after = !after) else this
+
+    /**
+     * The hash code uses just the key, so that a tree with the root negated will have the same hash as one with the leaves negated
+     */
+    override def hashCode = prefix.##
   }
 
-  case class Branch(prefix : Long, level : Byte, left : IntervalTrie, right : IntervalTrie, s:Boolean = false) extends IntervalTrie {
+  /**
+   * A branch
+   * @param prefix the common prefix of both children
+   * @param level the level of the node. 0..63 for branches. Higher means bigger
+   * @param left the left child
+   * @param right the right child
+   * @param s the sign. If this is true, the tree is negated
+   */
+  final case class Branch(prefix : Long, level : Byte, left : IntervalTrie, right : IntervalTrie, s:Boolean = false) extends IntervalTrie {
 
     /**
      * The value between the left and right child
@@ -412,6 +433,11 @@ private[immutable] object IntervalTrie {
      * @param value true if the tree shall be negated
      */
     def flip(value:Boolean) : Branch = if(value) copy(s = !s) else this
+
+    /**
+     * The hash code excludes the sign so that a tree with the root negated will have the same hash as one with the leaves negated
+     */
+    override def hashCode = left.## + 41 * right.##
   }
 
   /**
@@ -544,16 +570,6 @@ private[immutable] sealed abstract class IntervalTrie {
   final override def equals(that:Any) = that match {
     case that:IntervalTrie => equals0(this, that, false)
     case _ => false
-  }
-
-  final def head : Leaf = this match {
-    case b:Branch => b.left.head
-    case l:Leaf => l
-  }
-
-  final def last : Leaf = this match {
-    case b:Branch => b.right.last
-    case l:Leaf => l
   }
 
   def foreachKey[U](f : Long => U) : Unit = this match {
