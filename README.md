@@ -24,7 +24,8 @@ n = lhs.size + rhs.size
 
 |Operation|Time Complexity|Remark|
 |---|---|---|---|
-|lookup|O(log(n))|   |
+|membership test|O(log(n))|   |
+|insertion|O(log(n))|Insertion is not public. Sets are constructed using union or intersection of simple sets|
 
 ## Memory usage
 
