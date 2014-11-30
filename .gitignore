@@ -1,0 +1,6 @@
+#IDEA
+.idea
+.idea_modules
+
+#SBT
+target/
