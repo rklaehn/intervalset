@@ -16,7 +16,7 @@ Supported fundamental operations are union, intersection, negation. There is a z
 
 n = lhs.size + rhs.size
 
-|Operation|Worst Case|Best Case|Remark|
+|Operation|Worst&nbsp;Case|Best&nbsp;Case|Remark|
 |---|---|---|---|
 |union|O(n&nbsp;log(n))|O(1)||
 |intersection|O(n&nbsp;log(n))|O(1)||
@@ -25,7 +25,7 @@ n = lhs.size + rhs.size
 
 ## Set/Element operations
 
-|Operation|Time Complexity|Remark|
+|Operation|Time&nbsp;Complexity|Remark|
 |---|---|---|---|
 |membership&nbsp;test|O(log(n))|   |
 |insertion|O(log(n))|Insertion is not public. Complex sets are constructed by using union or intersection of simple sets|
