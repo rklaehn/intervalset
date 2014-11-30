@@ -16,16 +16,17 @@ n = lhs.size + rhs.size
 
 |Operation|Worst Case|Best Case|Remark|
 |---|---|---|---|
-|union|O(n log(n))|O(1)||
-|intersection|O(n log(n))|O(1)||
+|union|O(n&nbsp;log(n))|O(1)||
+|intersection|O(n&nbsp;log(n))|O(1)||
 |negate|O(1)|O(1)|Negation is always just a simple bit flip of the root node|
+|xor|O(n&nbsp;log(n))|O(1)|xor is not a fundamental operation, but is implemented as a separate operation for efficiency|
 
 ## Set/Element operations
 
 |Operation|Time Complexity|Remark|
 |---|---|---|---|
 |membership test|O(log(n))|   |
-|insertion|O(log(n))|Insertion is not public. Sets are constructed using union or intersection of simple sets|
+|insertion|O(log(n))|Insertion is not public.|
 
 ## Memory usage
 
@@ -35,5 +36,31 @@ Leaves have just 8 bytes of user data, so they should take as much space as a bo
 
 All operations will use as much structural sharing as possible. E.g. the union of two non-intersecing sets will usually reuse the entire sets, same for intersection where one of the operands is true for the relevant interval.
 
-    a union zero eq a
-    a intersection one eq a
+```scala
+a union zero eq a
+a intersection one eq a
+```
+    
+## Benchmarks
+
+Benchmarks are done using [Thyme](https://github.com/Ichoran/thyme). Two cases are tested:
+
+### Full traversal
+
+In this test, the two sets have the following form:
+
+```
+a = [0..2[, [4..6[, [8..10[, [12..14[, [16..18[ ...
+b = [1..3[, [5..7[, [9..11[, [13..15[, [17..19[ ...
+```
+
+For sets with such a structure, the operation has to traverse to the leafs of both trees, and new branch nodes have to be constructed.
+
+### Cutoff
+
+```
+a = [0..2[, [4..6[, [8..10[, [12..14[, [16..18[ ...
+b = [0..200[, [400..600[, [800..1000[, [1200..1400[, [1600..1800[ ...
+```
+
+For this case, a contiguous interval in b will overlap many intervals in a, so traversal does not have to go all the way into the leaves.
