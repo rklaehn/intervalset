@@ -1,5 +1,7 @@
 package scala.collection.immutable
 
+import scala.collection.AbstractTraversable
+
 private[immutable] object IntervalTrie {
 
   import java.lang.Long.numberOfLeadingZeros
@@ -577,14 +579,6 @@ private[immutable] sealed abstract class IntervalTrie {
       left.foreachKey(f)
       right.foreachKey(f)
     case Leaf(key, _, _) => f(key)
-  }
-
-  def support : Traversable[Long] = new Traversable[Long] {
-    def foreach[U](f: Long => U) = foreachKey(f)
-  }
-
-  def leafs : Traversable[Leaf] = new Traversable[Leaf] {
-    def foreach[U](f: Leaf => U) = foreachLeaf(IntervalTrie.this, false, f)
   }
 
   /**

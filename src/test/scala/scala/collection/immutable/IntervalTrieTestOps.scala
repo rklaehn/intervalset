@@ -63,6 +63,11 @@ private[immutable] object IntervalTrieTestOps {
         b flip bs
   }
 
+  def head(a:IntervalTrie) : Leaf = a match {
+    case a:Branch => head(a.left)
+    case a:Leaf => a
+  }
+
   private def isValid0(a0:Boolean, a:IntervalTrie, as:Boolean) : Boolean = a match {
     case a:Branch =>
       val as1 = as ^ a.s
@@ -78,6 +83,6 @@ private[immutable] object IntervalTrieTestOps {
   }
 
   def isValid(a:IntervalTrie) : Boolean = {
-    a!=null && (a.support.head == 0L) && isValid0(a0 = false, a, as = false)
+    a!=null && (head(a).key == 0L) && isValid0(a0 = false, a, as = false)
   }
 }
