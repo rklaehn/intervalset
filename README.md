@@ -18,10 +18,10 @@ n = lhs.size + rhs.size
 
 |Operation|Worst&nbsp;Case|Best&nbsp;Case|Remark|
 |---|---|---|---|
-|union|O(n&nbsp;log(n))|O(1)||
-|intersection|O(n&nbsp;log(n))|O(1)||
+|union|O(n)|O(1)||
+|intersection|O(n)|O(1)||
 |negate|O(1)|O(1)|Negation is always just a simple bit flip of the root node|
-|xor|O(n&nbsp;log(n))|O(1)|xor is not a fundamental operation, but is implemented as a separate operation for efficiency|
+|xor|O(n)|O(1)|xor is not a fundamental operation, but is implemented as a separate operation for efficiency|
 
 ## Set/Element operations
 
