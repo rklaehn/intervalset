@@ -17,20 +17,6 @@ private[immutable] object IntervalTrieTestOps {
   }
 
   /**
-   * A binary operation that just merges leaves from the lhs and the rhs, without considering their value at all.
-   * In the case of leaves with identical prefixes, the rhs will be returned.
-   * Note that the result of this operation can be a non-canonical tree, so this is not to be used from outside.
-   */
-  object MergeCalculator extends OrderedBinaryOperator {
-
-    protected def collision(a0:Boolean, a: Leaf, as: Boolean, b0: Boolean, b:Leaf, bs:Boolean) = b
-
-    protected def overlapA(a: IntervalTrie, as:Boolean, b0: Boolean) = a
-
-    protected def overlapB(a0: Boolean, b: IntervalTrie, bs:Boolean) = b
-  }
-
-  /**
    * An XOR operator that fully negates branches instead of just flipping the sign bit. This is inefficient, so it is
    * just used for testing.
    */

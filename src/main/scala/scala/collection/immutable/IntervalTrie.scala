@@ -291,6 +291,20 @@ private[immutable] object IntervalTrie {
   }
 
   /**
+   * A binary operation that just merges leaves from the lhs and the rhs, without considering their value at all.
+   * In the case of leaves with identical prefixes, the rhs will be returned.
+   * Note that the result of this operation can be a non-canonical tree, so this is not to be used from outside.
+   */
+  object MergeCalculator extends OrderedBinaryOperator {
+
+    protected def collision(a0:Boolean, a: Leaf, as: Boolean, b0: Boolean, b:Leaf, bs:Boolean) = b
+
+    protected def overlapA(a: IntervalTrie, as:Boolean, b0: Boolean) = a
+
+    protected def overlapB(a0: Boolean, b: IntervalTrie, bs:Boolean) = b
+  }
+
+  /**
    * An operation that calculates the value before, at or behind a position
    */
   sealed abstract class Sampler {
@@ -359,21 +373,27 @@ private[immutable] object IntervalTrie {
    */
   final val zero : IntervalTrie = Leaf(0L, at = false, after = false)
 
-  def point(value:Long) = Leaf(value, at = true, after = false)
+  def start(value: Long, included: Boolean) = zero merge Leaf(value, at = included, after = true)
 
-  def hole(value:Long) = Leaf(value, at = false, after = true)
+  def startAt(value: Long) = start(value, included = true)
 
-  def start(value:Long, included:Boolean) = Leaf(value, at = included, after = true)
+  def startAfter(value: Long) = start(value, included = false)
 
-  def startAt(value:Long) = start(value, included = true)
+  def end(value: Long, included: Boolean) = zero merge Leaf(value, at = included, after = false)
 
-  def startAfter(value:Long) = start(value, included = false)
+  def endAt(value: Long) = end(value, true)
 
-  def end(value:Long, included:Boolean) = Leaf(value, at = included, after = false)
+  def endBefore(value: Long) = end(value, false)
 
-  def endAt(value:Long) = end(value, true)
+  def hole(a: Long) = zero merge Leaf(a, false, true)
 
-  def endBefore(value:Long) = end(value, false)
+  def point(a: Long) = zero merge Leaf(a, true, false)
+
+  def interval(a: Long, ai: Boolean, b: Long, bi: Boolean) = {
+    if (!unsigned_<(a, b))
+      throw new IllegalArgumentException("a must be less than b (unsigned)!")
+    zero merge Leaf(a, ai, true) merge Leaf(b, bi, false)
+  }
 
   def apply(elems : Leaf*) : IntervalTrie =
     nullToZero(elems.foldLeft(zero)(merge0))
@@ -507,6 +527,27 @@ private[immutable] object IntervalTrie {
       f(leaf flip as)
   }
 
+  val intervalPattern = """\s*([\[\]])\s*(-?\d+)\.\.(-?\d+)\s*([\[\]])\s*""".r
+  val pointPattern = """\s*\[\s*(\d+)\s*\]\s*""".r
+  def parse(text:String, zeroText:String = "zero", stringToElement: String => Long = _.toLong) = {
+    val result0 = {
+      def parseInterval(text:String) : IntervalTrie = text match {
+        case intervalPattern(ai,a,b,bi) => interval(stringToElement(a), ai == "[", stringToElement(b), bi == "]")
+        case pointPattern(a) => point(stringToElement(a))
+        case _ => throw new IllegalArgumentException(s"Could not parse $text as an interval")
+      }
+      val trimmed = text.trim
+      if(trimmed == zeroText)
+        zero
+      else
+        trimmed.split(',').filterNot(_.isEmpty).map(parseInterval).foldLeft(zero)(_ union _)
+    }
+    if(result0.last == Leaf(-1L, true, false))
+      result0.init
+    else
+      result0
+  }
+
   /**
    * formats the tree to a string, given a function to convert an element to a string
    * @param a the tree
@@ -590,5 +631,19 @@ private[immutable] sealed abstract class IntervalTrie {
   def isEmpty = this match {
     case Leaf(key, at, after) => key==0 && !at && !after
     case _ => false
+  }
+
+  def merge(that:IntervalTrie) = MergeCalculator(this, that)
+
+  def union(that:IntervalTrie) = OrCalculator(this, that)
+
+  def last = this match {
+    case a:Leaf => a
+    case a:Branch => a.right
+  }
+
+  def init : IntervalTrie = this match {
+    case a:Leaf => null
+    case a:Branch => branch(a.prefix, a.level, a.left, a.right.init)
   }
 }
