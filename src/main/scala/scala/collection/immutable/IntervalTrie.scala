@@ -379,7 +379,7 @@ private[immutable] object IntervalTrie {
 
   def startAfter(value: Long) = start(value, included = false)
 
-  def end(value: Long, included: Boolean) = zero merge Leaf(value, at = included, after = false)
+  def end(value: Long, included: Boolean) = one merge Leaf(value, at = included, after = false)
 
   def endAt(value: Long) = end(value, true)
 
