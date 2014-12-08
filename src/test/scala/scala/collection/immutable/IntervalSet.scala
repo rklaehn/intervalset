@@ -52,24 +52,13 @@ object IntervalSet {
     def fromKey(key:Long) : Long = key + Long.MinValue
   }
 
-  implicit object floatIsIntervalSetElement extends IntervalSetElement[Float] {
-
-    def toKey(value:Float) =
-      if(value.isNaN)
-        throw new IllegalArgumentException("NaN")
-      else
-        java.lang.Float.floatToIntBits(value)
-
-    def fromKey(key:Long) : Float = java.lang.Float.intBitsToFloat(key.toInt)
-  }
-
   implicit object doubleIsIntervalSetElement extends IntervalSetElement[Double] {
 
-    val minKey = toKey(Double.NegativeInfinity)
+    private val minKey = toKey(Double.NegativeInfinity)
 
-    val maxKey = toKey(Double.PositiveInfinity)
+    private val maxKey = toKey(Double.PositiveInfinity)
 
-    @inline final def unsigned_<(i: Long, j: Long) = (i < j) ^ (i < 0L) ^ (j < 0L)
+    @inline private final def unsigned_<(i: Long, j: Long) = (i < j) ^ (i < 0L) ^ (j < 0L)
 
     def toKey(value:Double) = {
       if(value.isNaN)

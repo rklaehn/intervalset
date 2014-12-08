@@ -620,19 +620,6 @@ private[immutable] sealed abstract class IntervalTrie {
     case Leaf(key, _, _) => f(key)
   }
 
-  /**
-   * The number of leaves in the tree. This is always >=1, since even the zero tree is represented as a leaf
-   */
-  final def size : Int = this match {
-    case leaf:Leaf => 1
-    case Branch(_, _, left, right, _) => left.size + right.size
-  }
-
-  def isEmpty = this match {
-    case Leaf(key, at, after) => key==0 && !at && !after
-    case _ => false
-  }
-
   def merge(that:IntervalTrie) = MergeCalculator(this, that)
 
   def union(that:IntervalTrie) = OrCalculator(this, that)
