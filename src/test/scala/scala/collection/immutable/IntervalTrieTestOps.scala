@@ -12,7 +12,7 @@ private[immutable] object IntervalTrieTestOps {
    * @return a tree with the same structure as a, but with all leaves negated
    */
   def negate(a:IntervalTrie) : IntervalTrie = a match {
-    case a:Leaf => Leaf(a.key, !a.at, !a.after)
+    case a:Leaf => Leaf(a.key, !a.at, !a.behind)
     case a:Branch => Branch(a.prefix, a.level, negate(a.left), negate(a.right), a.s)
   }
 
@@ -25,12 +25,12 @@ private[immutable] object IntervalTrieTestOps {
     protected def collision(a0:Boolean, a: Leaf, as:Boolean, b0: Boolean, b:Leaf, bs:Boolean) = {
       val before1 = a0 ^ b0
       val at1 = (a.at ^ as) ^ (b.at ^ bs)
-      val after1 = (a.after ^ as) ^ (b.after ^ bs)
+      val after1 = (a.behind ^ as) ^ (b.behind ^ bs)
       if(before1 == at1 && at1 == after1 && a.key != 0)
         null // noop leaf
-      else if(a.at == at1 && a.after == after1)
+      else if(a.at == at1 && a.behind == after1)
         a // reuse a if possible
-      else if(b.at == at1 && b.after == after1)
+      else if(b.at == at1 && b.behind == after1)
         b // reuse b if possible
       else
         Leaf(a.key, at1, after1)
@@ -60,11 +60,11 @@ private[immutable] object IntervalTrieTestOps {
       val as1 = as ^ a.s
       ((a.left.prefix & m) == (a.right.prefix & m)) &&
       isValid0(a0, a.left, as1) &&
-      isValid0(a.after ^ as, a.right, as1)
+      isValid0(a.behind ^ as, a.right, as1)
     case a:Leaf =>
       val before = a0
       val at = a.at ^ as
-      val after = a.after ^ as
+      val after = a.behind ^ as
       val same = before == at && at == after
       !same
     case _ =>
@@ -79,6 +79,12 @@ private[immutable] object IntervalTrieTestOps {
   implicit class MergeEnhancement(private val lhs:IntervalTrie) extends AnyVal {
 
     def merge(rhs:Leaf) = merge0(lhs,rhs)
+
+    def before(value:Long) = IntervalTrie.SampleBefore(false, lhs, value)
+
+    def at(value:Long) = IntervalTrie.SampleAt(false, lhs, value)
+
+    def after(value:Long) = IntervalTrie.SampleAfter(false, lhs, value)
 
     def support:Traversable[Long] = new Traversable[Long] {
       override def foreach[U](f: (Long) => U): Unit = lhs.foreachKey(f)

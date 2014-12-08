@@ -72,14 +72,14 @@ private[immutable] object IntervalTrie {
         // a is before b, so it is overlapped by b0
         val a1 = overlapA(a, as, b0)
         // b is behind a, so it is overlapped by a.last
-        val b1 = overlapB(a.after ^ as, b, bs)
+        val b1 = overlapB(a.behind ^ as, b, bs)
         // make the branch (results can be empty)
         branch(p, level, a1, b1)
       } else {
         // b is before a, so it is overlapped by a0
         val b1 = overlapB(a0, b, bs)
         // a is behind b, so it is overlapped by b.last
-        val a1 = overlapA(a, as, b.after ^ bs)
+        val a1 = overlapA(a, as, b.behind ^ bs)
         // make the branch (results can be empty)
         branch(p, level, b1, a1)
       }
@@ -141,7 +141,7 @@ private[immutable] object IntervalTrie {
             val as1 = as ^ a.s
             if (zeroAt(b_p, a_l)) {
               // b fits into the left child of a
-              branch(a_p, a_l, op(a0, a.left, as1, b0, b, bs), overlapA(a.right, as1, b.after ^ bs))
+              branch(a_p, a_l, op(a0, a.left, as1, b0, b, bs), overlapA(a.right, as1, b.behind ^ bs))
             } else {
               // b fits into the right child of a
               branch(a_p, a_l, overlapA(a.left, as1, b0), op(a.mid ^ as, a.right, as1, b0, b, bs))
@@ -159,7 +159,7 @@ private[immutable] object IntervalTrie {
             val bs1 = bs ^ b.s
             if (zeroAt(a_p, b_l)) {
               // a fits into the left child of b
-              branch(b_p, b_l, op(a0, a, as, b0, b.left, bs1), overlapB(a.after ^ as, b.right, bs1))
+              branch(b_p, b_l, op(a0, a, as, b0, b.left, bs1), overlapB(a.behind ^ as, b.right, bs1))
             } else {
               // a fits into the right child of b
               branch(b_p, b_l, overlapB(a0, b.left, bs1), op(a0, a, as, b.mid ^ bs, b.right, bs1))
@@ -194,8 +194,8 @@ private[immutable] object IntervalTrie {
      * @param b the rhs
      * @return the result, can be null
      */
-    protected def apply0(a:IntervalTrie, b:IntervalTrie) =
-      op(a0 = false, a, as = false, b0 = false, b, bs = false)
+    protected def apply0(a0:Boolean, a:IntervalTrie, b0:Boolean, b:IntervalTrie) =
+      op(a0, a, as = false, b0, b, bs = false)
 
     /**
      * External version of the operation. The result will never be null
@@ -204,7 +204,7 @@ private[immutable] object IntervalTrie {
      * @return the result, guaranteed to be non-null
      */
     final def apply(a: IntervalTrie, b: IntervalTrie) =
-      nullToZero(apply0(a, b))
+      nullToZero(apply0(false, a, false, b))
   }
 
   object OrCalculator extends OrderedBinaryOperator {
@@ -212,12 +212,12 @@ private[immutable] object IntervalTrie {
     protected def collision(a0:Boolean, a: Leaf, as:Boolean, b0: Boolean, b:Leaf, bs:Boolean) = {
       val before1 = a0 | b0
       val at1 = (a.at ^ as) | (b.at ^ bs)
-      val after1 = (a.after ^ as) | (b.after ^ bs)
+      val after1 = (a.behind ^ as) | (b.behind ^ bs)
       if(before1 == at1 && at1 == after1 && a.key != 0)
         null // noop leaf
-      else if(a.at == at1 && a.after == after1)
+      else if(a.at == at1 && a.behind == after1)
         a // reuse a if possible
-      else if(b.at == at1 && b.after == after1)
+      else if(b.at == at1 && b.behind == after1)
         b // reuse b if possible
       else
         Leaf(a.key, at1, after1)
@@ -241,12 +241,12 @@ private[immutable] object IntervalTrie {
     protected def collision(a0:Boolean, a: Leaf, as:Boolean, b0: Boolean, b:Leaf, bs:Boolean) = {
       val before1 = a0 ^ b0
       val at1 = (a.at ^ as) ^ (b.at ^ bs)
-      val after1 = (a.after ^ as) ^ (b.after ^ bs)
+      val after1 = (a.behind ^ as) ^ (b.behind ^ bs)
       if(before1 == at1 && at1 == after1 && a.key != 0)
         null // noop leaf
-      else if(a.at == at1 && a.after == after1)
+      else if(a.at == at1 && a.behind == after1)
         a // reuse a if possible
-      else if(b.at == at1 && b.after == after1)
+      else if(b.at == at1 && b.behind == after1)
         b // reuse b if possible
       else
         Leaf(a.key, at1, after1)
@@ -264,12 +264,12 @@ private[immutable] object IntervalTrie {
     protected def collision(a0:Boolean, a: Leaf, as:Boolean, b0: Boolean, b:Leaf, bs:Boolean) = {
       val before1 = a0 & b0
       val at1 = (a.at ^ as) & (b.at ^ bs)
-      val after1 = (a.after ^ as) & (b.after ^ bs)
+      val after1 = (a.behind ^ as) & (b.behind ^ bs)
       if(before1 == at1 && at1 == after1 && a.key != 0)
         null // noop leaf
-      else if(a.at == at1 && a.after == after1)
+      else if(a.at == at1 && a.behind == after1)
         a // reuse a if possible
-      else if(b.at == at1 && b.after == after1)
+      else if(b.at == at1 && b.behind == after1)
         b // reuse b if possible
       else
         Leaf(a.key, at1, after1)
@@ -309,7 +309,7 @@ private[immutable] object IntervalTrie {
    */
   sealed abstract class Sampler {
 
-    def apply(a: IntervalTrie, value: Long) = op(false, a, false, value)
+    def apply(a0:Boolean, a: IntervalTrie, value: Long) = op(a0, a, false, value)
 
     /**
      * Method that is invoked when a leaf is found. This allows to customize whether we want at, before or after
@@ -327,7 +327,7 @@ private[immutable] object IntervalTrie {
           // key is either before or after a
           val branchLevel = levelAbove(prefix, value)
           if (zeroAt(prefix, branchLevel))
-            a.after ^ as // after
+            a.behind ^ as // after
           else
             a0 // before
         } else {
@@ -342,7 +342,7 @@ private[immutable] object IntervalTrie {
         if (a.key == value)
           onLeaf(a0, a, as)
         else if (unsigned_<(a.key, value))
-          a.after ^ as
+          a.behind ^ as
         else
           a0
     }
@@ -360,26 +360,32 @@ private[immutable] object IntervalTrie {
 
   object SampleAfter extends Sampler {
 
-    protected def onLeaf(a0: Boolean, a: Leaf, as: Boolean): Boolean = a.after ^ as
+    protected def onLeaf(a0: Boolean, a: Leaf, as: Boolean): Boolean = a.behind ^ as
+  }
+
+  def negate(a:IntervalTrie) : IntervalTrie = a match {
+    case a:Branch => a.copy(s = !a.s)
+    case a:Leaf => a.copy(at = !a.at, behind = !a.behind)
+    case a => a
   }
 
   /**
    * The interval trie that is true everywhere (except before 0, where it is false by convention
    */
-  final val one : IntervalTrie = Leaf(0L, at = true, after = true)
+  final val one : IntervalTrie = Leaf(0L, at = true, behind = true)
 
   /**
    * The interval trie that is false everywhere
    */
-  final val zero : IntervalTrie = Leaf(0L, at = false, after = false)
+  final val zero : IntervalTrie = Leaf(0L, at = false, behind = false)
 
-  def start(value: Long, included: Boolean) = zero merge Leaf(value, at = included, after = true)
+  def start(value: Long, included: Boolean) = zero merge Leaf(value, at = included, behind = true)
 
   def startAt(value: Long) = start(value, included = true)
 
   def startAfter(value: Long) = start(value, included = false)
 
-  def end(value: Long, included: Boolean) = one merge Leaf(value, at = included, after = false)
+  def end(value: Long, included: Boolean) = one merge Leaf(value, at = included, behind = false)
 
   def endAt(value: Long) = end(value, true)
 
@@ -402,9 +408,9 @@ private[immutable] object IntervalTrie {
    * A leaf. This is going to be changed to 4 different leaf types for the 4 possible combinations of at and after
    * @param prefix the prefix, which in case of a leaf is identical to the key
    * @param at the value exactly at the key
-   * @param after the value immediately after the key
+   * @param behind the value immediately after the key
    */
-  final case class Leaf(prefix: Long, at:Boolean, after:Boolean) extends IntervalTrie {
+  final case class Leaf(prefix: Long, at:Boolean, behind:Boolean) extends IntervalTrie {
 
     /**
      * For a leaf, the prefix is the key
@@ -420,7 +426,7 @@ private[immutable] object IntervalTrie {
      * xors the values of at and after with the value
      * @param value true if the leaf shall be flipped
      */
-    def flip(value:Boolean) : Leaf = if(value) copy(at = !at, after = !after) else this
+    def flip(value:Boolean) : Leaf = if(value) copy(at = !at, behind = !behind) else this
 
     /**
      * The hash code uses just the key, so that a tree with the root negated will have the same hash as one with the leaves negated
@@ -441,12 +447,12 @@ private[immutable] object IntervalTrie {
     /**
      * The value between the left and right child
      */
-    val mid = left.after ^ s
+    val mid = left.behind ^ s
 
     /**
      * The value after the right child.
      */
-    val after = right.after ^ s
+    val behind = right.behind ^ s
 
     /**
      * negates the branch if value is true
@@ -481,7 +487,7 @@ private[immutable] object IntervalTrie {
         equals0(a.left, b.left, abs1) && equals0(a.right, b.right, abs1)
       case (a:Leaf, b:Leaf) =>
         // we know that the prefixes are the same, so we don't have to compare the keys
-        (a.at ^ abs == b.at) && (a.after ^ abs == b.after)
+        (a.at ^ abs == b.at) && (a.behind ^ abs == b.behind)
       case _ =>
         // we already know that the levels are the same, so both must be either leaf or branch
         unreachable
@@ -562,7 +568,7 @@ private[immutable] object IntervalTrie {
       var before = false
       foreachLeaf(a, false, leaf => {
         def key = elementToString(leaf.key)
-        for(text <- (before, leaf.at, leaf.after) match {
+        for(text <- (before, leaf.at, leaf.behind) match {
           case (false, true, false) => Some(s"[$key]")
           case (true, false, true) => Some(s"$key[, ]$key")
           case (false, false, true) => Some(s"]$key")
@@ -571,13 +577,13 @@ private[immutable] object IntervalTrie {
           case (true, false, false) => Some(s"$key[")
           case _ => None
         }) {
-          val sep = if (!leaf.after) ", " else ".."
+          val sep = if (!leaf.behind) ", " else ".."
           rb.append(text)
           rb.append(sep)
         }
-        before = leaf.after
+        before = leaf.behind
       })
-      if (a.after)
+      if (a.behind)
         rb.append(s"${elementToString(-1)}]")
       else
         rb.length -= 2
@@ -595,18 +601,9 @@ private[immutable] sealed abstract class IntervalTrie {
 
   def level : Byte
 
-  def after : Boolean
+  def behind : Boolean
   
   def flip(that:Boolean) : IntervalTrie
-
-  def before(value:Long) : Boolean =
-    SampleBefore(this, value)
-
-  def at(value:Long) : Boolean =
-    SampleAt(this, value)
-
-  def after(value:Long) : Boolean =
-    SampleAfter(this, value)
 
   final override def equals(that:Any) = that match {
     case that:IntervalTrie => equals0(this, that, false)

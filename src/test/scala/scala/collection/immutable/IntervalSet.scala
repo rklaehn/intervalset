@@ -2,21 +2,25 @@ package scala.collection.immutable
 
 import scala.collection.immutable.IntervalSet.IntervalSetElement
 
-final case class IntervalSet[T] private (tree:IntervalTrie)(implicit t:IntervalSetElement[T]) extends (T => Boolean) {
+final case class IntervalSet[T] private (before:Boolean, tree:IntervalTrie)(implicit t:IntervalSetElement[T]) extends (T => Boolean) { lhs =>
 
-  def apply(value:T) = tree.at(t.toKey(value))
+  def constant : Boolean = tree eq null
 
-  def & (that:IntervalSet[T]) = IntervalSet(IntervalTrie.AndCalculator(tree, that.tree))
+  def apply(value:T) = IntervalTrie.SampleAt(before, tree, t.toKey(value))
 
-  def | (that:IntervalSet[T]) = IntervalSet(IntervalTrie.OrCalculator(tree, that.tree))
+  def & (rhs:IntervalSet[T]) = IntervalSet(lhs.before & rhs.before,
+    IntervalTrie.AndCalculator(tree, rhs.tree))
 
-  def unary_~ = IntervalSet(tree flip true)
+  def | (rhs:IntervalSet[T]) = IntervalSet(lhs.before | rhs.before,
+    IntervalTrie.OrCalculator(tree, rhs.tree))
 
-  def ^ (that:IntervalSet[T]) = IntervalSet(IntervalTrie.XorCalculator(tree, that.tree))
+  def unary_~ = IntervalSet(!before, IntervalTrie.negate(tree))
 
-  def isSupersetOf(that:IntervalSet[T]) = (this | that) == this
+  def ^ (rhs:IntervalSet[T]) = IntervalSet(lhs.before ^ rhs.before, IntervalTrie.XorCalculator(tree, rhs.tree))
 
-  def isProperSupersetOf(that:IntervalSet[T]) = isSupersetOf(that) && (that != this)
+  def isSupersetOf(rhs:IntervalSet[T]) = (lhs | rhs) == lhs
+
+  def isProperSupersetOf(rhs:IntervalSet[T]) = isSupersetOf(rhs) && (rhs != lhs)
 
   override def toString = IntervalTrie.format(tree, x => t.fromKey(x).toString)
 }
@@ -86,19 +90,19 @@ object IntervalSet {
 
   private implicit def tIsLong[T](value:T)(implicit tl:IntervalSetElement[T]) = tl.toKey(value)
 
-  def zero[T:IntervalSetElement] = IntervalSet[T](IntervalTrie.zero)
+  def zero[T:IntervalSetElement] = IntervalSet[T](false, IntervalTrie.zero)
 
-  def one[T:IntervalSetElement] = IntervalSet[T](IntervalTrie.one)
+  def one[T:IntervalSetElement] = IntervalSet[T](false, IntervalTrie.one)
 
-  def point[T:IntervalSetElement](value:T) = IntervalSet[T](IntervalTrie.point(value))
+  def point[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.point(value))
 
-  def hole[T:IntervalSetElement](value:T) = IntervalSet[T](IntervalTrie.hole(value))
+  def hole[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.hole(value))
 
-  def from[T:IntervalSetElement](value:T) = IntervalSet[T](IntervalTrie.startAt(value))
+  def from[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.startAt(value))
 
-  def above[T:IntervalSetElement](value:T) = IntervalSet[T](IntervalTrie.startAfter(value))
+  def above[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.startAfter(value))
 
-  def below[T:IntervalSetElement](value:T) = IntervalSet[T](IntervalTrie.endBefore(value))
+  def below[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.endBefore(value))
 
-  def to[T:IntervalSetElement](value:T) = IntervalSet[T](IntervalTrie.endAt(value))
+  def to[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.endAt(value))
 }
