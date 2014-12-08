@@ -188,23 +188,16 @@ private[immutable] object IntervalTrie {
       }
     }
 
-    /**
-     * Internal version of the operation. Can return null
-     * @param a the lhs
-     * @param b the rhs
-     * @return the result, can be null
-     */
-    protected def apply0(a0:Boolean, a:IntervalTrie, b0:Boolean, b:IntervalTrie) =
-      op(a0, a, as = false, b0, b, bs = false)
-
-    /**
-     * External version of the operation. The result will never be null
-     * @param a the lhs
-     * @param b the rhs
-     * @return the result, guaranteed to be non-null
-     */
-    final def apply(a: IntervalTrie, b: IntervalTrie) =
-      nullToZero(apply0(false, a, false, b))
+    final def apply(a0: Boolean, a: IntervalTrie, b0: Boolean, b: IntervalTrie) = {
+      if ((a eq null) && (b eq null))
+        null
+      else if (a eq null)
+        overlapB(a0, b, false)
+      else if (b eq null)
+        overlapA(a, false, b0)
+      else
+        op(a0, a, as = false, b0, b, bs = false)
+    }
   }
 
   object OrCalculator extends OrderedBinaryOperator {
@@ -370,41 +363,6 @@ private[immutable] object IntervalTrie {
   }
 
   /**
-   * The interval trie that is true everywhere (except before 0, where it is false by convention
-   */
-  final val one : IntervalTrie = Leaf(0L, at = true, behind = true)
-
-  /**
-   * The interval trie that is false everywhere
-   */
-  final val zero : IntervalTrie = Leaf(0L, at = false, behind = false)
-
-  def start(value: Long, included: Boolean) = zero merge Leaf(value, at = included, behind = true)
-
-  def startAt(value: Long) = start(value, included = true)
-
-  def startAfter(value: Long) = start(value, included = false)
-
-  def end(value: Long, included: Boolean) = one merge Leaf(value, at = included, behind = false)
-
-  def endAt(value: Long) = end(value, true)
-
-  def endBefore(value: Long) = end(value, false)
-
-  def hole(a: Long) = zero merge Leaf(a, false, true)
-
-  def point(a: Long) = zero merge Leaf(a, true, false)
-
-  def interval(a: Long, ai: Boolean, b: Long, bi: Boolean) = {
-    if (!unsigned_<(a, b))
-      throw new IllegalArgumentException("a must be less than b (unsigned)!")
-    zero merge Leaf(a, ai, true) merge Leaf(b, bi, false)
-  }
-
-  def apply(elems : Leaf*) : IntervalTrie =
-    nullToZero(elems.foldLeft(zero)(merge0))
-
-  /**
    * A leaf. This is going to be changed to 4 different leaf types for the 4 possible combinations of at and after
    * @param prefix the prefix, which in case of a leaf is identical to the key
    * @param at the value exactly at the key
@@ -495,12 +453,6 @@ private[immutable] object IntervalTrie {
   }
 
   /**
-   * Helper method to transform the internal representation (null allowed) to the external representation
-   * @param value the internal representation (can be null)
-   */
-  @inline private final def nullToZero(value:IntervalTrie) : IntervalTrie = if(value eq null) zero else value
-
-  /**
    * Merges a leaf into a tree, using the rhs in case of a collision
    * @param lhs the original tree. Can be null (=empty)
    * @param rhs the leaf to be merged. Must not be null
@@ -532,65 +484,65 @@ private[immutable] object IntervalTrie {
     case leaf:Leaf =>
       f(leaf flip as)
   }
-
-  val intervalPattern = """\s*([\[\]])\s*(-?\d+)\.\.(-?\d+)\s*([\[\]])\s*""".r
-  val pointPattern = """\s*\[\s*(\d+)\s*\]\s*""".r
-  def parse(text:String, zeroText:String = "zero", stringToElement: String => Long = _.toLong) = {
-    val result0 = {
-      def parseInterval(text:String) : IntervalTrie = text match {
-        case intervalPattern(ai,a,b,bi) => interval(stringToElement(a), ai == "[", stringToElement(b), bi == "]")
-        case pointPattern(a) => point(stringToElement(a))
-        case _ => throw new IllegalArgumentException(s"Could not parse $text as an interval")
-      }
-      val trimmed = text.trim
-      if(trimmed == zeroText)
-        zero
-      else
-        trimmed.split(',').filterNot(_.isEmpty).map(parseInterval).foldLeft(zero)(_ union _)
-    }
-    if(result0.last == Leaf(-1L, true, false))
-      result0.init
-    else
-      result0
-  }
-
-  /**
-   * formats the tree to a string, given a function to convert an element to a string
-   * @param a the tree
-   * @param elementToString the element toString method
-   * @param zeroText the text to use for the zero tree, default is "zero"
-   */
-  def format(a:IntervalTrie, elementToString: Long => String = _.toString, zeroText:String = "zero") = {
-    if (a == zero)
-      zeroText
-    else {
-      val rb = new StringBuilder
-      var before = false
-      foreachLeaf(a, false, leaf => {
-        def key = elementToString(leaf.key)
-        for(text <- (before, leaf.at, leaf.behind) match {
-          case (false, true, false) => Some(s"[$key]")
-          case (true, false, true) => Some(s"$key[, ]$key")
-          case (false, false, true) => Some(s"]$key")
-          case (false, true, true) => Some(s"[$key")
-          case (true, true, false) => Some(s"$key]")
-          case (true, false, false) => Some(s"$key[")
-          case _ => None
-        }) {
-          val sep = if (!leaf.behind) ", " else ".."
-          rb.append(text)
-          rb.append(sep)
-        }
-        before = leaf.behind
-      })
-      if (a.behind)
-        rb.append(s"${elementToString(-1)}]")
-      else
-        rb.length -= 2
-      rb.toString()
-    }
-
-  }
+//
+//  val intervalPattern = """\s*([\[\]])\s*(-?\d+)\.\.(-?\d+)\s*([\[\]])\s*""".r
+//  val pointPattern = """\s*\[\s*(\d+)\s*\]\s*""".r
+//  def parse(text:String, zeroText:String = "zero", stringToElement: String => Long = _.toLong) = {
+//    val result0 = {
+//      def parseInterval(text:String) : IntervalTrie = text match {
+//        case intervalPattern(ai,a,b,bi) => interval(stringToElement(a), ai == "[", stringToElement(b), bi == "]")
+//        case pointPattern(a) => point(stringToElement(a))
+//        case _ => throw new IllegalArgumentException(s"Could not parse $text as an interval")
+//      }
+//      val trimmed = text.trim
+//      if(trimmed == zeroText)
+//        zero
+//      else
+//        trimmed.split(',').filterNot(_.isEmpty).map(parseInterval).foldLeft(zero)(_ union _)
+//    }
+//    if(result0.last == Leaf(-1L, true, false))
+//      result0.init
+//    else
+//      result0
+//  }
+//
+//  /**
+//   * formats the tree to a string, given a function to convert an element to a string
+//   * @param a the tree
+//   * @param elementToString the element toString method
+//   * @param zeroText the text to use for the zero tree, default is "zero"
+//   */
+//  def format(a:IntervalTrie, elementToString: Long => String = _.toString, zeroText:String = "zero") = {
+//    if (a == zero)
+//      zeroText
+//    else {
+//      val rb = new StringBuilder
+//      var before = false
+//      foreachLeaf(a, false, leaf => {
+//        def key = elementToString(leaf.key)
+//        for(text <- (before, leaf.at, leaf.behind) match {
+//          case (false, true, false) => Some(s"[$key]")
+//          case (true, false, true) => Some(s"$key[, ]$key")
+//          case (false, false, true) => Some(s"]$key")
+//          case (false, true, true) => Some(s"[$key")
+//          case (true, true, false) => Some(s"$key]")
+//          case (true, false, false) => Some(s"$key[")
+//          case _ => None
+//        }) {
+//          val sep = if (!leaf.behind) ", " else ".."
+//          rb.append(text)
+//          rb.append(sep)
+//        }
+//        before = leaf.behind
+//      })
+//      if (a.behind)
+//        rb.append(s"${elementToString(-1)}]")
+//      else
+//        rb.length -= 2
+//      rb.toString()
+//    }
+//
+//  }
 }
 
 private[immutable] sealed abstract class IntervalTrie {
@@ -617,9 +569,9 @@ private[immutable] sealed abstract class IntervalTrie {
     case Leaf(key, _, _) => f(key)
   }
 
-  def merge(that:IntervalTrie) = MergeCalculator(this, that)
+  def merge(that:IntervalTrie) = MergeCalculator(false, this, false, that)
 
-  def union(that:IntervalTrie) = OrCalculator(this, that)
+  def union(that:IntervalTrie) = OrCalculator(false, this, false, that)
 
   def last = this match {
     case a:Leaf => a

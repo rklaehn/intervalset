@@ -66,11 +66,11 @@ object IntervalTrieSampleProperties extends Properties("TreeValueSet2.Sample") {
   property("equality") = forAll { a: IntervalTrie =>
     ~a === negate(a)
   }
-
-  property("toStringParse") = forAll { a: IntervalTrie =>
-    val atext = IntervalTrie.format(a)
-    val b = IntervalTrie.parse(atext)
-    val btext = IntervalTrie.format(b)
-    a == b
-  }
+//
+//  property("toStringParse") = forAll { a: IntervalTrie =>
+//    val atext = IntervalTrie.format(a)
+//    val b = IntervalTrie.parse(atext)
+//    val btext = IntervalTrie.format(b)
+//    a == b
+//  }
 }

@@ -9,20 +9,21 @@ final case class IntervalSet[T] private (before:Boolean, tree:IntervalTrie)(impl
   def apply(value:T) = IntervalTrie.SampleAt(before, tree, t.toKey(value))
 
   def & (rhs:IntervalSet[T]) = IntervalSet(lhs.before & rhs.before,
-    IntervalTrie.AndCalculator(tree, rhs.tree))
+    IntervalTrie.AndCalculator(lhs.before, lhs.tree, rhs.before, rhs.tree))
 
   def | (rhs:IntervalSet[T]) = IntervalSet(lhs.before | rhs.before,
-    IntervalTrie.OrCalculator(tree, rhs.tree))
+    IntervalTrie.OrCalculator(lhs.before, lhs.tree, rhs.before, rhs.tree))
 
   def unary_~ = IntervalSet(!before, IntervalTrie.negate(tree))
 
-  def ^ (rhs:IntervalSet[T]) = IntervalSet(lhs.before ^ rhs.before, IntervalTrie.XorCalculator(tree, rhs.tree))
+  def ^ (rhs:IntervalSet[T]) = IntervalSet(lhs.before ^ rhs.before,
+    IntervalTrie.XorCalculator(lhs.before, lhs.tree, rhs.before, rhs.tree))
 
   def isSupersetOf(rhs:IntervalSet[T]) = (lhs | rhs) == lhs
 
   def isProperSupersetOf(rhs:IntervalSet[T]) = isSupersetOf(rhs) && (rhs != lhs)
 
-  override def toString = IntervalTrie.format(tree, x => t.fromKey(x).toString)
+  override def toString = "" // IntervalTrie.format(tree, x => t.fromKey(x).toString)
 }
 
 object IntervalSet {
@@ -90,19 +91,19 @@ object IntervalSet {
 
   private implicit def tIsLong[T](value:T)(implicit tl:IntervalSetElement[T]) = tl.toKey(value)
 
-  def zero[T:IntervalSetElement] = IntervalSet[T](false, IntervalTrie.zero)
+  def zero[T:IntervalSetElement] = IntervalSet[T](false, null)
 
-  def one[T:IntervalSetElement] = IntervalSet[T](false, IntervalTrie.one)
+  def point[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(value, true, false))
 
-  def point[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.point(value))
+  def from[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(value, true, true))
 
-  def hole[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.hole(value))
+  def above[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(value, false, true))
 
-  def from[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.startAt(value))
+  def one[T:IntervalSetElement] = IntervalSet[T](true, null)
 
-  def above[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.startAfter(value))
+  def hole[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(value, false, true))
 
-  def below[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.endBefore(value))
+  def below[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(value, false, false))
 
-  def to[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.endAt(value))
+  def to[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(value, true, false))
 }

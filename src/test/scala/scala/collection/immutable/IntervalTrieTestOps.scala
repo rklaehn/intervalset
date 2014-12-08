@@ -76,6 +76,43 @@ private[immutable] object IntervalTrieTestOps {
     a!=null && (head(a).key == 0L) && isValid0(a0 = false, a, as = false)
   }
 
+  implicit class CreateEnhancement(private val value:IntervalTrie.type) extends AnyVal {
+    /**
+     * The interval trie that is true everywhere (except before 0, where it is false by convention
+     */
+    final def one: IntervalTrie = Leaf(0L, at = true, behind = true)
+
+    /**
+     * The interval trie that is false everywhere
+     */
+    final def zero: IntervalTrie = Leaf(0L, at = false, behind = false)
+
+    def start(value: Long, included: Boolean) = zero merge Leaf(value, at = included, behind = true)
+
+    def startAt(value: Long) = start(value, included = true)
+
+    def startAfter(value: Long) = start(value, included = false)
+
+    def end(value: Long, included: Boolean) = one merge Leaf(value, at = included, behind = false)
+
+    def endAt(value: Long) = end(value, true)
+
+    def endBefore(value: Long) = end(value, false)
+
+    def hole(a: Long) = zero merge Leaf(a, false, true)
+
+    def point(a: Long) = zero merge Leaf(a, true, false)
+
+    def interval(a: Long, ai: Boolean, b: Long, bi: Boolean) = {
+      if (!unsigned_<(a, b))
+        throw new IllegalArgumentException("a must be less than b (unsigned)!")
+      zero merge Leaf(a, ai, true) merge Leaf(b, bi, false)
+    }
+
+    def apply(elems: Leaf*): IntervalTrie =
+      elems.foldLeft(zero)(merge0)
+  }
+
   implicit class MergeEnhancement(private val lhs:IntervalTrie) extends AnyVal {
 
     def merge(rhs:Leaf) = merge0(lhs,rhs)

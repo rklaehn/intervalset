@@ -13,24 +13,24 @@ object IntervalTrieArbitrary {
       // a normal interval
       val start = Leaf(a, ai, true)
       val end = Leaf(b, bi, false)
-      zero merge start merge end
+      IntervalTrie.zero merge start merge end
     } else if(a>b) {
       // a hole
       val start = Leaf(b, bi, false)
       val end = Leaf(a, ai, true)
-      one merge start merge end
+      IntervalTrie.one merge start merge end
     } else {
       if(ai ^ bi)
-        zero merge Leaf(a, true, false)
+        IntervalTrie.zero merge Leaf(a, true, false)
       else
-        one merge Leaf(a, false, true)
+        IntervalTrie.one merge Leaf(a, false, true)
     }
     result
   }
 
   def makeProfileXor(support:Array[Long], included:Array[Boolean]) : IntervalTrie = {
     require(support.length == included.length)
-    val result = (support.indices.dropRight(1) by 2).foldLeft(zero : IntervalTrie) {
+    val result = (support.indices.dropRight(1) by 2).foldLeft(IntervalTrie.zero : IntervalTrie) {
       case (current, i) =>
         val a = support(i)
         val ai = included(i)
@@ -90,8 +90,8 @@ object IntervalTrieArbitrary {
   }
 
   private def randomProfileGen(size:Int) = Gen.frequency(
-    1 -> zero,
-    1 -> one,
+    1 -> IntervalTrie.zero,
+    1 -> IntervalTrie.one,
     // 30 -> randomProfile(0, 100, size)
     30 -> randomProfileXor(0, 100, size)
   )
