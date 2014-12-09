@@ -28,7 +28,7 @@ final case class IntervalSet[T] private (before:Boolean, tree:IntervalTrie)(impl
 
 object IntervalSet {
 
-  trait IntervalSetElement[@specialized T] extends Any {
+  trait IntervalSetElement[@specialized(Long, Double) T] extends Any {
 
     def toKey(value:T) : Long
 
