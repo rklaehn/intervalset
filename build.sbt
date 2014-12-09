@@ -18,6 +18,6 @@ libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.11.6" % "test"
 
 unmanagedBase in Test <<= baseDirectory { base => base / "test-lib" }
 
-coverageMinimum := 70
+coverageMinimum := 65
 
 coverageFailOnMinimum := true
