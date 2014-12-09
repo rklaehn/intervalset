@@ -113,6 +113,14 @@ private[immutable] object IntervalTrieTestOps {
       elems.foldLeft(zero)(merge0)
   }
 
+  def foreachKey[U](tree:IntervalTrie, f : Long => U) : Unit = tree match {
+    case Branch(_, _, left, right, _) =>
+      foreachKey(left, f)
+      foreachKey(right, f)
+    case Leaf(key, _, _) => f(key)
+    case _ =>
+  }
+
   implicit class MergeEnhancement(private val lhs:IntervalTrie) extends AnyVal {
 
     def merge(rhs:Leaf) = merge0(lhs,rhs)
@@ -124,7 +132,7 @@ private[immutable] object IntervalTrieTestOps {
     def after(value:Long) = IntervalTrie.SampleAfter(false, lhs, value)
 
     def support:Traversable[Long] = new Traversable[Long] {
-      override def foreach[U](f: (Long) => U): Unit = lhs.foreachKey(f)
+      override def foreach[U](f: (Long) => U): Unit = foreachKey(lhs, f)
     }
   }
 }

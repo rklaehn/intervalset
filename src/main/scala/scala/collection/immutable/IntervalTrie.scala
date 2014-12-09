@@ -561,25 +561,4 @@ private[immutable] sealed abstract class IntervalTrie {
     case that:IntervalTrie => equals0(this, that, false)
     case _ => false
   }
-
-  def foreachKey[U](f : Long => U) : Unit = this match {
-    case Branch(_, _, left, right, _) =>
-      left.foreachKey(f)
-      right.foreachKey(f)
-    case Leaf(key, _, _) => f(key)
-  }
-
-  def merge(that:IntervalTrie) = MergeCalculator(false, this, false, that)
-
-  def union(that:IntervalTrie) = OrCalculator(false, this, false, that)
-
-  def last = this match {
-    case a:Leaf => a
-    case a:Branch => a.right
-  }
-
-  def init : IntervalTrie = this match {
-    case a:Leaf => null
-    case a:Branch => branch(a.prefix, a.level, a.left, a.right.init)
-  }
 }
