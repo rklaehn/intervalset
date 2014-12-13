@@ -12,7 +12,7 @@ private[immutable] object IntervalTrieTestOps {
    * @return a tree with the same structure as a, but with all leaves negated
    */
   def negate(a:IntervalTrie) : IntervalTrie = a match {
-    case a:Leaf => Leaf(a.key, !a.at, !a.behind)
+    case a:Leaf => Leaf(a.key, !a.at, !a.above)
     case a:Branch => Branch(a.prefix, a.level, negate(a.left), negate(a.right), a.s)
   }
 
@@ -25,12 +25,12 @@ private[immutable] object IntervalTrieTestOps {
     protected def collision(a0:Boolean, a: Leaf, as:Boolean, b0: Boolean, b:Leaf, bs:Boolean) = {
       val before1 = a0 ^ b0
       val at1 = (a.at ^ as) ^ (b.at ^ bs)
-      val after1 = (a.behind ^ as) ^ (b.behind ^ bs)
+      val after1 = (a.above ^ as) ^ (b.above ^ bs)
       if(before1 == at1 && at1 == after1 && a.key != 0)
         null // noop leaf
-      else if(a.at == at1 && a.behind == after1)
+      else if(a.at == at1 && a.above == after1)
         a // reuse a if possible
-      else if(b.at == at1 && b.behind == after1)
+      else if(b.at == at1 && b.above == after1)
         b // reuse b if possible
       else
         Leaf(a.key, at1, after1)
@@ -38,15 +38,15 @@ private[immutable] object IntervalTrieTestOps {
 
     protected def overlapA(a: IntervalTrie, as:Boolean, b0: Boolean) =
       if(b0)
-        negate(a flip as)
+        negate(a xor as)
       else
-        a flip as
+        a xor as
 
     protected def overlapB(a0: Boolean, b: IntervalTrie, bs: Boolean) =
       if(a0)
-        negate(b flip bs)
+        negate(b xor bs)
       else
-        b flip bs
+        b xor bs
   }
 
   def head(a:IntervalTrie) : Leaf = a match {
@@ -60,11 +60,11 @@ private[immutable] object IntervalTrieTestOps {
       val as1 = as ^ a.s
       ((a.left.prefix & m) == (a.right.prefix & m)) &&
       isValid0(a0, a.left, as1) &&
-      isValid0(a.behind ^ as, a.right, as1)
+      isValid0(a.above ^ as, a.right, as1)
     case a:Leaf =>
       val before = a0
       val at = a.at ^ as
-      val after = a.behind ^ as
+      val after = a.above ^ as
       val same = before == at && at == after
       !same
     case _ =>
@@ -80,20 +80,20 @@ private[immutable] object IntervalTrieTestOps {
     /**
      * The interval trie that is true everywhere (except before 0, where it is false by convention
      */
-    final def one: IntervalTrie = Leaf(0L, at = true, behind = true)
+    final def one: IntervalTrie = Leaf(0L, at = true, above = true)
 
     /**
      * The interval trie that is false everywhere
      */
-    final def zero: IntervalTrie = Leaf(0L, at = false, behind = false)
+    final def zero: IntervalTrie = Leaf(0L, at = false, above = false)
 
-    def start(value: Long, included: Boolean) = zero merge Leaf(value, at = included, behind = true)
+    def start(value: Long, included: Boolean) = zero merge Leaf(value, at = included, above = true)
 
     def startAt(value: Long) = start(value, included = true)
 
     def startAfter(value: Long) = start(value, included = false)
 
-    def end(value: Long, included: Boolean) = one merge Leaf(value, at = included, behind = false)
+    def end(value: Long, included: Boolean) = one merge Leaf(value, at = included, above = false)
 
     def endAt(value: Long) = end(value, true)
 

@@ -62,7 +62,7 @@ object IntervalTrieArbitrary {
         case (true, 2) => Leaf(value, false, true)
         case _ => ???
       }
-      current = cut.behind
+      current = cut.above
       cuts += cut
     }
     val result = IntervalTrie(cuts.result(): _*)

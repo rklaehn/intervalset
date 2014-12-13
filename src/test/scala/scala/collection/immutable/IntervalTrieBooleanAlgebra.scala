@@ -14,7 +14,7 @@ object IntervalTrieBooleanAlgebra {
 
     def one = IntervalTrie.one
 
-    def complement(a: IntervalTrie) = a flip true
+    def complement(a: IntervalTrie) = a xor true
 
     def or(a: IntervalTrie, b: IntervalTrie) = OrCalculator(false, a, false, b)
 
