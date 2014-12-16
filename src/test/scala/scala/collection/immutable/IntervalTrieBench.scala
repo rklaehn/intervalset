@@ -4,14 +4,13 @@ import ichi.bench._
 import spire.syntax.all._
 
 object IntervalTrieBench extends App {
-  import IntervalTrieBooleanAlgebra.algebra
 
   def makeOnOffProfile(n:Int, offset:Long = 0, stride:Long = 2) = {
     val support = (0 until n).map(_ * stride + offset).toArray
-    IntervalTrieArbitrary.makeProfile(false, support, Array.fill(support.length)(0))
+    IntervalSetArbitrary.makeProfileXor(false, support, Array.fill(support.length)(0))
   }
 
-  val thyme = Thyme.warmed(verbose = println)
+  val thyme = new Thyme() // Thyme.warmed(verbose = println)
   println("starting benchmark")
   // in this test, we have to go all the way down to the leaves in all cases
   def fullTraversalTest(n:Int) : Unit = {

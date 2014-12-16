@@ -2,28 +2,38 @@ package scala.collection.immutable
 
 import scala.collection.immutable.IntervalSet.IntervalSetElement
 
-final case class IntervalSet[T] private (before:Boolean, tree:IntervalTrie)(implicit t:IntervalSetElement[T]) extends (T => Boolean) { lhs =>
+final case class IntervalSet[T] private (below:Boolean, tree:IntervalTrie)(implicit t:IntervalSetElement[T]) extends (T => Boolean) { lhs =>
 
-  def constant : Boolean = tree eq null
+  import IntervalTrie._
 
-  def apply(value:T) = IntervalTrie.SampleAt(before, tree, t.toKey(value))
+  private[immutable] def ise = implicitly[IntervalSetElement[T]]
 
-  def & (rhs:IntervalSet[T]) = IntervalSet(lhs.before & rhs.before,
-    IntervalTrie.AndCalculator(lhs.before, lhs.tree, rhs.before, rhs.tree))
+  def isConstant : Boolean = tree eq null
 
-  def | (rhs:IntervalSet[T]) = IntervalSet(lhs.before | rhs.before,
-    IntervalTrie.OrCalculator(lhs.before, lhs.tree, rhs.before, rhs.tree))
+  def below(value:T) : Boolean = IntervalTrie.SampleBelow(below, tree, toPrefix(t.toKey(value)))
 
-  def unary_~ = IntervalSet(!before, IntervalTrie.negate(tree))
+  def at(value:T) : Boolean = IntervalTrie.SampleAt(below, tree, toPrefix(t.toKey(value)))
 
-  def ^ (rhs:IntervalSet[T]) = IntervalSet(lhs.before ^ rhs.before,
-    IntervalTrie.XorCalculator(lhs.before, lhs.tree, rhs.before, rhs.tree))
+  def above(value:T) : Boolean = IntervalTrie.SampleAbove(below, tree, toPrefix(t.toKey(value)))
+
+  def apply(value:T) : Boolean = at(value)
+
+  def & (rhs:IntervalSet[T]) = IntervalSet(lhs.below & rhs.below,
+    AndCalculator(lhs.below, lhs.tree, rhs.below, rhs.tree))
+
+  def | (rhs:IntervalSet[T]) = IntervalSet(lhs.below | rhs.below,
+    OrCalculator(lhs.below, lhs.tree, rhs.below, rhs.tree))
+
+  def ^ (rhs:IntervalSet[T]) = IntervalSet(lhs.below ^ rhs.below,
+    XorCalculator(lhs.below, lhs.tree, rhs.below, rhs.tree))
+
+  def unary_~ = IntervalSet(!below, tree)
 
   def isSupersetOf(rhs:IntervalSet[T]) = (lhs | rhs) == lhs
 
   def isProperSupersetOf(rhs:IntervalSet[T]) = isSupersetOf(rhs) && (rhs != lhs)
 
-  override def toString = "" // IntervalTrie.format(tree, x => t.fromKey(x).toString)
+  override def toString = s"IntervalSet($below,$tree)"
 }
 
 object IntervalSet {
@@ -52,9 +62,9 @@ object IntervalSet {
 
   implicit object longIsIntervalSetElement extends IntervalSetElement[Long] {
 
-    def toKey(value:Long) = value - Long.MinValue
+    def toKey(value:Long) = value
 
-    def fromKey(key:Long) : Long = key + Long.MinValue
+    def fromKey(key:Long) : Long = key
   }
 
   implicit object doubleIsIntervalSetElement extends IntervalSetElement[Double] {
@@ -73,14 +83,11 @@ object IntervalSet {
       // two's complement signed integer: if the sign bit is set, negate everything except the sign bit
       val twosComplement = if(signAndMagnitude>=0) signAndMagnitude else (-signAndMagnitude | (1L<<63))
       // rotate because the radix tree uses unsigned integers
-      val unsigned = twosComplement - Long.MinValue
-      unsigned
+      twosComplement
     }
 
     def fromKey(key:Long) = {
-      val unsigned = if(unsigned_<(key,minKey)) minKey else if(unsigned_<(maxKey, key)) maxKey else key
-      // rotate because the radix tree uses unsigned integers
-      val twosComplement = unsigned + Long.MinValue
+      val twosComplement = if(key < minKey) minKey else if(maxKey < key) maxKey else key
       // sign and magnitude signed integer: if the sign bit is set, negate everything except the sign bit
       val signAndMagnitude = if(twosComplement>=0) twosComplement else (-twosComplement | (1L<<63))
       // double from sign and magnitude signed integer
@@ -89,21 +96,27 @@ object IntervalSet {
     }
   }
 
+  import IntervalTrie._
+
   private implicit def tIsLong[T](value:T)(implicit tl:IntervalSetElement[T]) = tl.toKey(value)
 
-  def zero[T:IntervalSetElement] = IntervalSet[T](false, null)
+  def fromKind[T:IntervalSetElement](value:T, kind:Int) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), kind))
 
-  def point[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(value, true, false))
+  def constant[T:IntervalSetElement](value:Boolean) = IntervalSet[T](value, null)
 
-  def from[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(value, true, true))
+  def zero[T:IntervalSetElement] = constant[T](false)
 
-  def above[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(value, false, true))
+  def point[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), Both))
 
-  def one[T:IntervalSetElement] = IntervalSet[T](true, null)
+  def atOrAbove[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), Below))
 
-  def hole[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(value, false, true))
+  def above[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), Above))
 
-  def below[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(value, false, false))
+  def one[T:IntervalSetElement] = constant[T](true)
 
-  def to[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(value, true, false))
+  def hole[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), Both))
+
+  def below[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), Below))
+
+  def atOrBelow[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), Above))
 }

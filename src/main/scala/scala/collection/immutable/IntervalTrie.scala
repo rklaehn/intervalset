@@ -1,8 +1,15 @@
 package scala.collection.immutable
 
+import scala.annotation.switch
+import scala.util.hashing.MurmurHash3
+
 private[immutable] object IntervalTrie {
 
   import java.lang.Long.numberOfLeadingZeros
+
+  @inline final def toPrefix(key:Long) : Long = key - Long.MinValue
+
+  @inline final def fromPrefix(key:Long) : Long = key + Long.MinValue
 
   @inline final def unsigned_<(i: Long, j: Long) = (i < j) ^ (i < 0L) ^ (j < 0L)
 
@@ -60,29 +67,27 @@ private[immutable] object IntervalTrie {
      * Joins two non-overlapping leaves
      * @param a0 the value before a
      * @param a a node (leaf or branch) from the lhs
-     * @param as the sign of a. If this is true, a is negated. The sign applies just to a, not to a0
      * @param b0 the value before b
      * @param b a node (leaf or branch) from the rhs
-     * @param bs the sign of b. If this is true, b is negated. The sign applies just to b, not to b0
      * @return the result, can be null
      */
-    @inline private final def join(a0:Boolean, a: IntervalTrie, as:Boolean, b0:Boolean, b: IntervalTrie, bs:Boolean): IntervalTrie = {
+    @inline private final def join(a0:Boolean, a: IntervalTrie, b0:Boolean, b: IntervalTrie): IntervalTrie = {
       val a_p = a.prefix
       val b_p = b.prefix
       val level = levelAbove(a_p, b_p)
       val p = maskAbove(a_p, level)
       if (zeroAt(a_p, level)) {
         // a is before b, so it is overlapped by b0
-        val a1 = overlapA(a, as, b0)
-        // b is behind a, so it is overlapped by a.last
-        val b1 = overlapB(a.above ^ as, b, bs)
+        val a1 = overlapA(a0, a, b0)
+        // b is behind a, so it is overlapped by a0 ^ a.sign
+        val b1 = overlapB(a0 ^ a.sign, b0, b)
         // make the branch (results can be empty)
         branch(p, level, a1, b1)
       } else {
         // b is before a, so it is overlapped by a0
-        val b1 = overlapB(a0, b, bs)
-        // a is behind b, so it is overlapped by b.last
-        val a1 = overlapA(a, as, b.above ^ bs)
+        val b1 = overlapB(a0, b0, b)
+        // a is behind b, so it is overlapped by b0 ^ b.sign
+        val a1 = overlapA(a0, a, b0 ^ b.sign)
         // make the branch (results can be empty)
         branch(p, level, b1, a1)
       }
@@ -92,43 +97,39 @@ private[immutable] object IntervalTrie {
      * This is called if two leaves collide (have the same prefix)
      * @param a0 the value before a
      * @param a a leaf from the lhs
-     * @param as the sign of a. If this is true, a is negated. The sign applies just to a, not to a0
      * @param b0 the value before b
      * @param b a leaf from the rhs
-     * @param bs the sign of b. If this is true, b is negated. The sign applies just to b, not to b0
      * @return the result. Can be a leaf or null
      */
-    protected def collision(a0:Boolean, a:Leaf, as:Boolean, b0:Boolean,b:Leaf, bs:Boolean) : IntervalTrie
+    protected def collision(a0:Boolean, a:Leaf, b0:Boolean,b:Leaf) : IntervalTrie
 
     /**
      * This will be called when a is completely covered by a contiguous interval of b
+     * @param a0
      * @param a a non-null tree (leaf or branch)
-     * @param as the sign of a. If this is true, a is negated.
      * @param b0 the constant value of b in the complete interval of a
      * @return the result, can be null
      */
-    protected def overlapA(a:IntervalTrie, as:Boolean, b0:Boolean) : IntervalTrie
+    protected def overlapA(a0: Boolean, a:IntervalTrie, b0:Boolean) : IntervalTrie
 
     /**
      * This will be called when b is completely covered by a contiguous interval of a
      * @param a0 the constant value of a in the complete interval of b
+     * @param b0
      * @param b a non-null tree (leaf or branch)
-     * @param bs the sign of b. If this is true, b is negated.
      * @return the result, can be null
      */
-    protected def overlapB(a0:Boolean, b:IntervalTrie, bs:Boolean) : IntervalTrie
+    protected def overlapB(a0:Boolean, b0:Boolean, b:IntervalTrie) : IntervalTrie
 
     /**
      * Performs the binary operation for two arbitrary trees
      * @param a0 the value before a
      * @param a a node (leaf or branch) from the lhs
-     * @param as the sign of a. If this is true, a is negated. The sign applies just to a, not to a0
      * @param b0 the value before b
      * @param b a node (leaf or branch) from the rhs
-     * @param bs the sign of b. If this is true, b is negated. The sign applies just to b, not to b0
      * @return the result, can be null
      */
-    private final def op(a0:Boolean, a: IntervalTrie, as:Boolean, b0:Boolean, b: IntervalTrie, bs:Boolean): IntervalTrie = {
+    private final def op(a0:Boolean, a: IntervalTrie, b0:Boolean, b: IntervalTrie): IntervalTrie = {
       val a_l = a.level
       val a_p = a.prefix
       val b_l = b.level
@@ -138,16 +139,16 @@ private[immutable] object IntervalTrie {
         // a is larger => a must be a branch
         if (!hasMatchAt(b_p, a_p, a_l)) {
           // the prefix of a and b is different. We don't care if a is a branch or a leaf
-          join(a0, a, as, b0, b, bs)
+          join(a0, a, b0, b)
         } else a match {
           case a: Branch =>
-            val as1 = as ^ a.s
+            val am = a0 ^ a.left.sign
             if (zeroAt(b_p, a_l)) {
               // b fits into the left child of a
-              a.lr(op(a0, a.left, as1, b0, b, bs), overlapA(a.right, as1, b.above ^ bs))
+              a.lr(op(a0, a.left, b0, b), overlapA(am, a.right, b0 ^ b.sign))
             } else {
               // b fits into the right child of a
-              a.lr(overlapA(a.left, as1, b0), op(a.mid ^ as, a.right, as1, b0, b, bs))
+              a.lr(overlapA(a0, a.left, b0), op(am, a.right, b0, b))
             }
           case _ =>
             unreachable
@@ -156,16 +157,16 @@ private[immutable] object IntervalTrie {
         // b is larger => b must be a branch
         if (!hasMatchAt(a_p, b_p, b_l)) {
           // the prefix of a and b is different. We don't care if b is a branch or a leaf
-          join(a0, a, as, b0, b, bs)
+          join(a0, a, b0, b)
         } else b match {
           case b: Branch =>
-            val bs1 = bs ^ b.s
+            val bm = b0 ^ b.left.sign
             if (zeroAt(a_p, b_l)) {
               // a fits into the left child of b
-              b.lr(op(a0, a, as, b0, b.left, bs1), overlapB(a.above ^ as, b.right, bs1))
+              b.lr(op(a0, a, b0, b.left), overlapB(a0 ^ a.sign, bm, b.right))
             } else {
               // a fits into the right child of b
-              b.lr(overlapB(a0, b.left, bs1), op(a0, a, as, b.mid ^ bs, b.right, bs1))
+              b.lr(overlapB(a0, b0, b.left), op(a0, a, bm, b.right))
             }
           case _ =>
             unreachable
@@ -175,19 +176,19 @@ private[immutable] object IntervalTrie {
         if (a_p == b_p) {
           (a, b) match {
             case (a: Branch, b: Branch) =>
-              val as1 = as ^ a.s
-              val bs1 = bs ^ b.s
+              val am = a0 ^ a.left.sign
+              val bm = b0 ^ b.left.sign
               // same prefix. leaves have to be merged
               // todo: check if we can return b unchanged
-              a.lr(op(a0, a.left, as1, b0, b.left, bs1), op(a.mid ^ as, a.right, as1, b.mid ^ bs, b.right, bs1))
+              a.lr(op(a0, a.left, b0, b.left), op(am, a.right, bm, b.right))
             case (a: Leaf, b: Leaf) =>
-              collision(a0, a, as, b0, b, bs)
+              collision(a0, a, b0, b)
             case _ =>
               unreachable
           }
         } else {
           // same mask, different prefix
-          join(a0, a, as, b0, b, bs)
+          join(a0, a, b0, b)
         }
       }
     }
@@ -196,109 +197,91 @@ private[immutable] object IntervalTrie {
       if ((a eq null) && (b eq null))
         null
       else if (a eq null)
-        overlapB(a0, b, false)
+        overlapB(a0, b0, b)
       else if (b eq null)
-        overlapA(a, false, b0)
+        overlapA(a0, a, b0)
       else
-        op(a0, a, as = false, b0, b, bs = false)
+        op(a0, a, b0, b)
     }
   }
 
   object OrCalculator extends OrderedBinaryOperator {
 
-    protected def collision(a0:Boolean, a: Leaf, as:Boolean, b0: Boolean, b:Leaf, bs:Boolean) = {
+    protected def collision(a0:Boolean, a: Leaf, b0: Boolean, b:Leaf) = {
       val below1 = a0 | b0
-      val at1 = (a.at ^ as) | (b.at ^ bs)
-      val above1 = (a.above ^ as) | (b.above ^ bs)
-      if(below1 == at1 && at1 == above1 && a.key != 0)
+      val at1 = (a.at ^ a0) | (b.at ^ b0)
+      val above1 = (a.above ^ a0) | (b.above ^ b0)
+      if(below1 == at1 && at1 == above1)
         null // noop leaf
       else if(a.at == at1 && a.above == above1)
         a // reuse a if possible
       else if(b.at == at1 && b.above == above1)
         b // reuse b if possible
       else
-        a.copy(at = at1, above = above1)
+        leaf(a.prefix, at1, above1)
     }
 
-    protected def overlapA(a: IntervalTrie, as:Boolean, b0: Boolean) =
+    protected def overlapA(a0:Boolean, a: IntervalTrie, b0: Boolean) =
       if(b0)
         null
       else
-        a xor as
+        a
 
-    protected def overlapB(a0: Boolean, b: IntervalTrie, bs: Boolean) =
+    protected def overlapB(a0: Boolean, b0:Boolean, b: IntervalTrie) =
       if(a0)
         null
       else
-        b xor bs
+        b
   }
 
   object XorCalculator extends OrderedBinaryOperator {
 
-    protected def collision(a0:Boolean, a: Leaf, as:Boolean, b0: Boolean, b:Leaf, bs:Boolean) = {
+    protected def collision(a0:Boolean, a: Leaf, b0: Boolean, b:Leaf) = {
       val below1 = a0 ^ b0
-      val at1 = (a.at ^ as) ^ (b.at ^ bs)
-      val above1 = (a.above ^ as) ^ (b.above ^ bs)
-      if(below1 == at1 && at1 == above1 && a.key != 0)
+      val at1 = (a.at ^ a0) ^ (b.at ^ b0)
+      val above1 = (a.above ^ a0) ^ (b.above ^ b0)
+      if(below1 == at1 && at1 == above1)
         null // noop leaf
       else if(a.at == at1 && a.above == above1)
         a // reuse a if possible
       else if(b.at == at1 && b.above == above1)
         b // reuse b if possible
       else
-        a.copy(at = at1, above = above1)
+        leaf(a.prefix, at1, above1)
     }
 
-    protected def overlapA(a: IntervalTrie, as:Boolean, b0: Boolean) =
-      a xor (as ^ b0)
+    protected def overlapA(a0:Boolean, a: IntervalTrie, b0: Boolean) = a
 
-    protected def overlapB(a0: Boolean, b: IntervalTrie, bs: Boolean) =
-      b xor (bs ^ a0)
+    protected def overlapB(a0: Boolean, b0:Boolean, b: IntervalTrie) = b
   }
 
   object AndCalculator extends OrderedBinaryOperator {
 
-    protected def collision(a0:Boolean, a: Leaf, as:Boolean, b0: Boolean, b:Leaf, bs:Boolean) = {
+    protected def collision(a0:Boolean, a: Leaf, b0: Boolean, b:Leaf) = {
       val below1 = a0 & b0
-      val at1 = (a.at ^ as) & (b.at ^ bs)
-      val above1 = (a.above ^ as) & (b.above ^ bs)
-      if(below1 == at1 && at1 == above1 && a.key != 0)
+      val at1 = (a.at ^ a0) & (b.at ^ b0)
+      val above1 = (a.above ^ a0) & (b.above ^ b0)
+      if(below1 == at1 && at1 == above1)
         null // noop leaf
       else if(a.at == at1 && a.above == above1)
         a // reuse a if possible
       else if(b.at == at1 && b.above == above1)
         b // reuse b if possible
       else
-        a.copy(at = at1, above = above1)
+        leaf(a.prefix, at1, above1)
     }
 
-    protected def overlapA(a: IntervalTrie, as:Boolean, b0: Boolean) = {
+    protected def overlapA(a0:Boolean, a: IntervalTrie, b0: Boolean) =
       if(b0)
-        a xor as
+        a
       else
         null
-    }
 
-    protected def overlapB(a: Boolean, b: IntervalTrie, bs:Boolean) = {
-      if(a)
-        b xor bs
+    protected def overlapB(a0: Boolean, b0:Boolean, b: IntervalTrie) =
+      if(a0)
+        b
       else
         null
-    }
-  }
-
-  /**
-   * A binary operation that just merges leaves from the lhs and the rhs, without considering their value at all.
-   * In the case of leaves with identical prefixes, the rhs will be returned.
-   * Note that the result of this operation can be a non-canonical tree, so this is not to be used from outside.
-   */
-  object MergeCalculator extends OrderedBinaryOperator {
-
-    protected def collision(a0:Boolean, a: Leaf, as: Boolean, b0: Boolean, b:Leaf, bs:Boolean) = b
-
-    protected def overlapA(a: IntervalTrie, as:Boolean, b0: Boolean) = a
-
-    protected def overlapB(a0: Boolean, b: IntervalTrie, bs:Boolean) = b
   }
 
   /**
@@ -306,17 +289,16 @@ private[immutable] object IntervalTrie {
    */
   sealed abstract class Sampler {
 
-    def apply(a0:Boolean, a: IntervalTrie, value: Long) = op(a0, a, false, value)
+    def apply(a0:Boolean, a: IntervalTrie, value: Long) = op(a0, a, value)
 
     /**
      * Method that is invoked when a leaf is found. This allows to customize whether we want at, before or after
      * @param a0 the value before the leaf
      * @param a the leaf
-     * @param as the sign of the leaf
      */
-    protected def onLeaf(a0: Boolean, a: Leaf, as: Boolean): Boolean
+    protected def onLeaf(a0: Boolean, a: Leaf): Boolean
 
-    private final def op(a0: Boolean, a: IntervalTrie, as: Boolean, value: Long): Boolean = a match {
+    private final def op(a0: Boolean, a: IntervalTrie, value: Long): Boolean = a match {
       case a: Branch =>
         val prefix = a.prefix
         val level = a.level
@@ -324,55 +306,62 @@ private[immutable] object IntervalTrie {
           // key is either before or after a
           val branchLevel = levelAbove(prefix, value)
           if (zeroAt(prefix, branchLevel))
-            a.above ^ as // after
+            a0 ^ a.sign // after
           else
             a0 // before
         } else {
-          val as1 = as ^ a.s
           // key is within a
           if (zeroAt(value, level))
-            op(a0, a.left, as1, value)
+            op(a0, a.left, value)
           else
-            op(a.mid ^ as, a.right, as1, value)
+            op(a0 ^ a.left.sign, a.right, value)
         }
       case a: Leaf =>
-        if (a.key == value)
-          onLeaf(a0, a, as)
-        else if (unsigned_<(a.key, value))
-          a.above ^ as
+        if (a.prefix == value)
+          onLeaf(a0, a)
+        else if (unsigned_<(a.prefix, value))
+          a0 ^ a.sign
         else
           a0
+      case _ =>
+        a0
     }
   }
 
-  object SampleBefore extends Sampler {
+  object SampleBelow extends Sampler {
 
-    protected def onLeaf(a0: Boolean, a: Leaf, as: Boolean): Boolean = a0
+    protected def onLeaf(a0: Boolean, a: Leaf): Boolean = a0
   }
 
   object SampleAt extends Sampler {
 
-    protected def onLeaf(a0: Boolean, a: Leaf, as: Boolean): Boolean = a.at ^ as
+    protected def onLeaf(a0: Boolean, a: Leaf): Boolean = a0 ^ a.at
   }
 
-  object SampleAfter extends Sampler {
+  object SampleAbove extends Sampler {
 
-    protected def onLeaf(a0: Boolean, a: Leaf, as: Boolean): Boolean = a.above ^ as
+    protected def onLeaf(a0: Boolean, a: Leaf): Boolean = a0 ^ a.above
   }
 
-  def negate(a:IntervalTrie) : IntervalTrie = a match {
-    case a:Branch => a.copy(s = !a.s)
-    case a:Leaf => a.copy(at = !a.at, above = !a.above)
-    case a => a
-  }
+  def leaf(prefix:Long, at:Boolean, above:Boolean) =
+    if(above) {
+      if(at)
+        Leaf(prefix, Below)
+      else
+        Leaf(prefix, Above)
+    } else {
+      if (at)
+        Leaf(prefix, Both)
+      else
+        null
+    }
 
   /**
    * A leaf. This is going to be changed to 4 different leaf types for the 4 possible combinations of at and after
    * @param prefix the prefix, which in case of a leaf is identical to the key
-   * @param at the value exactly at the key
-   * @param above the value immediately after the key
+   * @param kind the kind of the leaf
    */
-  final case class Leaf(prefix: Long, at:Boolean, above:Boolean) extends IntervalTrie {
+  final case class Leaf(prefix: Long, kind:Int) extends IntervalTrie {
 
     /**
      * For a leaf, the prefix is the key
@@ -384,17 +373,24 @@ private[immutable] object IntervalTrie {
      */
     def level = -1.toByte
 
-    /**
-     * xors the values of at and after with the value
-     * @param value true if the leaf shall be flipped
-     */
-    def xor(value:Boolean) : Leaf = if(value) copy(at = !at, above = !above) else this
+    def sign = kind == Below || kind == Above
 
-    /**
-     * The hash code uses just the key, so that a tree with the root negated will have the same hash as one with the leaves negated
-     */
-    override def hashCode = prefix.##
+    def at = (kind: @switch) match {
+      case Below => true
+      case Above => false
+      case Both => true
+    }
+
+    def above = (kind: @switch) match {
+      case Below => true
+      case Above => true
+      case Both => false
+    }
   }
+
+  @inline final val Below = 0
+  @inline final val Above = 1
+  @inline final val Both = 2
 
   /**
    * A branch
@@ -402,178 +398,40 @@ private[immutable] object IntervalTrie {
    * @param level the level of the node. 0..63 for branches. Higher means bigger
    * @param left the left child
    * @param right the right child
-   * @param s the sign. If this is true, the tree is negated
    */
-  final case class Branch(prefix : Long, level : Byte, left : IntervalTrie, right : IntervalTrie, s:Boolean = false) extends IntervalTrie {
+  final case class Branch(prefix : Long, level : Byte, left : IntervalTrie, right : IntervalTrie) extends IntervalTrie {
 
-    /**
-     * The value between the left and right child
-     */
-    val mid = left.above ^ s
-
-    /**
-     * The value after the right child.
-     */
-    val above = right.above ^ s
-
-    /**
-     * negates the branch if value is true
-     * @param value true if the tree shall be negated
-     */
-    def xor(value:Boolean) : Branch = if(value) copy(s = !s) else this
-
-    /**
-     * The hash code excludes the sign so that a tree with the root negated will have the same hash as one with the leaves negated
-     */
-    override def hashCode = left.## + 41 * right.##
+    val sign = left.sign ^ right.sign
 
     def lr(left:IntervalTrie, right:IntervalTrie) : IntervalTrie = {
       if(left eq null)
         right
       else if(right eq null)
         left
-      else if((left eq this.left) && (right eq this.right) && !this.s)
+      else if((left eq this.left) && (right eq this.right))
         this
       else
-        copy(left = left, right = right, s = false)
+        copy(left = left, right = right)
     }
-  }
-
-  /**
-   * Equals method that considers the sign. E.g. equals0(a, a.negate, true) will return true
-   * @param a the lhs
-   * @param b the rhs
-   * @param abs the product of the signs of a and b. False for a straight comparison
-   * @return true if the trees are equal modulo the product abs
-   */
-  private final def equals0(a:IntervalTrie, b:IntervalTrie, abs:Boolean) : Boolean = {
-    if(a.prefix != b.prefix)
-      // this works for both branches and leafs
-      false
-    else if(a.level != b.level)
-      // this ensures that the type is the same
-      false
-    else (a,b) match {
-      case (a:Branch, b:Branch) =>
-        // create the product of the sign from above and the signs of the operands
-        val abs1 = abs ^ a.s ^ b.s
-        equals0(a.left, b.left, abs1) && equals0(a.right, b.right, abs1)
-      case (a:Leaf, b:Leaf) =>
-        // we know that the prefixes are the same, so we don't have to compare the keys
-        (a.at ^ abs == b.at) && (a.above ^ abs == b.above)
-      case _ =>
-        // we already know that the levels are the same, so both must be either leaf or branch
-        unreachable
-    }
-  }
-
-  /**
-   * Merges a leaf into a tree, using the rhs in case of a collision
-   * @param lhs the original tree. Can be null (=empty)
-   * @param rhs the leaf to be merged. Must not be null
-   * @return a new tree with rhs merged in
-   */
-  def merge0(lhs: IntervalTrie, rhs: Leaf): IntervalTrie = lhs match {
-    case lhs@Branch(prefix, level, left, right, _) =>
-      if (!hasMatchAt(rhs.key, prefix, level))
-        join(rhs.key, rhs, prefix, lhs)
-      else if (zeroAt(rhs.key, level))
-        Branch(prefix, level, merge0(left, rhs), right)
-      else
-        Branch(prefix, level, left, merge0(right, rhs))
-    case lhs@Leaf(key2, _, _) =>
-      if (rhs.key == key2) rhs
-      else join(rhs.key, rhs, key2, lhs)
-    case _ =>
-      rhs
   }
 
   /**
    * Loops over the leafs of the trie in unsigned order of the keys.
    */
-  final def foreachLeaf[U](a:IntervalTrie, as:Boolean,f : Leaf =>  U) : Unit = a match {
+  final def foreachLeaf[U](a0:Boolean, a:IntervalTrie,f : ((Boolean, Leaf)) =>  U) : Unit = a match {
     case a:Branch =>
-      val as1 = as ^ a.s
-      foreachLeaf(a.left, as1, f)
-      foreachLeaf(a.right, as1, f)
+      foreachLeaf(a0, a.left, f)
+      foreachLeaf(a0 ^ a.sign, a.right, f)
     case leaf:Leaf =>
-      f(leaf xor as)
+      f((a0,leaf))
   }
-//
-//  val intervalPattern = """\s*([\[\]])\s*(-?\d+)\.\.(-?\d+)\s*([\[\]])\s*""".r
-//  val pointPattern = """\s*\[\s*(\d+)\s*\]\s*""".r
-//  def parse(text:String, zeroText:String = "zero", stringToElement: String => Long = _.toLong) = {
-//    val result0 = {
-//      def parseInterval(text:String) : IntervalTrie = text match {
-//        case intervalPattern(ai,a,b,bi) => interval(stringToElement(a), ai == "[", stringToElement(b), bi == "]")
-//        case pointPattern(a) => point(stringToElement(a))
-//        case _ => throw new IllegalArgumentException(s"Could not parse $text as an interval")
-//      }
-//      val trimmed = text.trim
-//      if(trimmed == zeroText)
-//        zero
-//      else
-//        trimmed.split(',').filterNot(_.isEmpty).map(parseInterval).foldLeft(zero)(_ union _)
-//    }
-//    if(result0.last == Leaf(-1L, true, false))
-//      result0.init
-//    else
-//      result0
-//  }
-//
-//  /**
-//   * formats the tree to a string, given a function to convert an element to a string
-//   * @param a the tree
-//   * @param elementToString the element toString method
-//   * @param zeroText the text to use for the zero tree, default is "zero"
-//   */
-//  def format(a:IntervalTrie, elementToString: Long => String = _.toString, zeroText:String = "zero") = {
-//    if (a == zero)
-//      zeroText
-//    else {
-//      val rb = new StringBuilder
-//      var before = false
-//      foreachLeaf(a, false, leaf => {
-//        def key = elementToString(leaf.key)
-//        for(text <- (before, leaf.at, leaf.behind) match {
-//          case (false, true, false) => Some(s"[$key]")
-//          case (true, false, true) => Some(s"$key[, ]$key")
-//          case (false, false, true) => Some(s"]$key")
-//          case (false, true, true) => Some(s"[$key")
-//          case (true, true, false) => Some(s"$key]")
-//          case (true, false, false) => Some(s"$key[")
-//          case _ => None
-//        }) {
-//          val sep = if (!leaf.behind) ", " else ".."
-//          rb.append(text)
-//          rb.append(sep)
-//        }
-//        before = leaf.behind
-//      })
-//      if (a.behind)
-//        rb.append(s"${elementToString(-1)}]")
-//      else
-//        rb.length -= 2
-//      rb.toString()
-//    }
-//
-//  }
 }
 
 private[immutable] sealed abstract class IntervalTrie {
-
-  import IntervalTrie._
 
   def prefix : Long
 
   def level : Byte
 
-  def above : Boolean
-  
-  def xor(that:Boolean) : IntervalTrie
-
-  final override def equals(that:Any) = that match {
-    case that:IntervalTrie => equals0(this, that, false)
-    case _ => false
-  }
+  def sign: Boolean
 }
