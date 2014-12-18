@@ -1,5 +1,8 @@
 package scala.collection.immutable
 
+import spire.math.Interval
+import spire.math.Interval.{Closed, Unbound, Open, Bound}
+
 import scala.annotation.switch
 import scala.util.hashing.MurmurHash3
 
@@ -27,6 +30,17 @@ private[immutable] object IntervalTrie {
 
   @inline final def hasMatchAt(key: Long, prefix: Long, level: Byte) =
     maskAbove(key, level) == prefix
+
+  def join(t1 : IntervalTrie, t2 : IntervalTrie) : IntervalTrie = {
+    val p1 = t1.prefix
+    val p2 = t2.prefix
+    val l = levelAbove(p1, p2)
+    val p = maskAbove(p1, l)
+    if (zeroAt(p1, l))
+      Branch(p, l, t1, t2)
+    else
+      Branch(p, l, t2, t1)
+  }
 
   def join(p1 : Long, t1 : IntervalTrie, p2 : Long, t2 : IntervalTrie) : IntervalTrie = {
     val l = levelAbove(p1, p2)
@@ -211,14 +225,7 @@ private[immutable] object IntervalTrie {
       val below1 = a0 | b0
       val at1 = (a.at ^ a0) | (b.at ^ b0)
       val above1 = (a.above ^ a0) | (b.above ^ b0)
-      if(below1 == at1 && at1 == above1)
-        null // noop leaf
-      else if(a.at == at1 && a.above == above1)
-        a // reuse a if possible
-      else if(b.at == at1 && b.above == above1)
-        b // reuse b if possible
-      else
-        leaf(a.prefix, at1, above1)
+      leaf(below1 != at1, at1 != above1, a, b)
     }
 
     protected def overlapA(a0:Boolean, a: IntervalTrie, b0: Boolean) =
@@ -240,14 +247,7 @@ private[immutable] object IntervalTrie {
       val below1 = a0 ^ b0
       val at1 = (a.at ^ a0) ^ (b.at ^ b0)
       val above1 = (a.above ^ a0) ^ (b.above ^ b0)
-      if(below1 == at1 && at1 == above1)
-        null // noop leaf
-      else if(a.at == at1 && a.above == above1)
-        a // reuse a if possible
-      else if(b.at == at1 && b.above == above1)
-        b // reuse b if possible
-      else
-        leaf(a.prefix, at1, above1)
+      leaf(below1 != at1, at1 != above1, a, b)
     }
 
     protected def overlapA(a0:Boolean, a: IntervalTrie, b0: Boolean) = a
@@ -261,14 +261,7 @@ private[immutable] object IntervalTrie {
       val below1 = a0 & b0
       val at1 = (a.at ^ a0) & (b.at ^ b0)
       val above1 = (a.above ^ a0) & (b.above ^ b0)
-      if(below1 == at1 && at1 == above1)
-        null // noop leaf
-      else if(a.at == at1 && a.above == above1)
-        a // reuse a if possible
-      else if(b.at == at1 && b.above == above1)
-        b // reuse b if possible
-      else
-        leaf(a.prefix, at1, above1)
+      leaf(below1 != at1, at1 != above1, a, b)
     }
 
     protected def overlapA(a0:Boolean, a: IntervalTrie, b0: Boolean) =
@@ -343,18 +336,21 @@ private[immutable] object IntervalTrie {
     protected def onLeaf(a0: Boolean, a: Leaf): Boolean = a0 ^ a.above
   }
 
-  def leaf(prefix:Long, at:Boolean, above:Boolean) =
-    if(above) {
-      if(at)
-        Leaf(prefix, Below)
-      else
-        Leaf(prefix, Above)
-    } else {
-      if (at)
-        Leaf(prefix, Both)
-      else
-        null
-    }
+  def leaf(below:Boolean, above:Boolean, a:Leaf, b:Leaf) = {
+    val kind =
+      if(above && below) Both
+      else if(above) Above
+      else if(below) Below
+      else -1
+    if(kind < 0)
+      null
+    else if(kind == a.kind)
+      a
+    else if(kind == b.kind)
+      b
+    else
+      Leaf(a.prefix, kind)
+  }
 
   /**
    * A leaf. This is going to be changed to 4 different leaf types for the 4 possible combinations of at and after
@@ -366,7 +362,7 @@ private[immutable] object IntervalTrie {
     /**
      * For a leaf, the prefix is the key
      */
-    def key = prefix
+    def key = fromPrefix(prefix)
 
     /**
      * This is -1 for leaves, so that the smallest possible branch (level=0) has a bigger level than a leaf
@@ -424,6 +420,46 @@ private[immutable] object IntervalTrie {
       foreachLeaf(a0 ^ a.sign, a.right, f)
     case leaf:Leaf =>
       f((a0,leaf))
+    case _ =>
+  }
+
+  final def foreachEdge[U](a:IntervalTrie)(f : Long =>  U) : Unit = a match {
+    case a:Branch =>
+      foreachEdge(a.left)(f)
+      foreachEdge(a.right)(f)
+    case leaf:Leaf =>
+      f(leaf.key)
+    case _ =>
+  }
+
+  final def foreachInterval[U](a0:Boolean, a:IntervalTrie)(f:Interval[Long] => U): Unit = {
+    import spire.std.long._
+    def op(b0:Bound[Long], a0:Boolean, a:IntervalTrie): Bound[Long] = a match {
+      case a: Leaf if a.kind == Below =>
+        if(a0)
+          f(Interval.fromBounds(b0, Open(a.key)))
+        Closed(a.key)
+      case a: Leaf if a.kind == Above =>
+        if(a0)
+          f(Interval.fromBounds(b0, Closed(a.key)))
+        Open(a.key)
+      case a:Leaf if a.kind == Both =>
+        if(a0)
+          f(Interval.fromBounds(b0, Open(a.key)))
+        else
+          f(Interval.point(a.key))
+        Open(a.key)
+      case a:Branch =>
+        val am = a0 ^ a.sign
+        val bm = op(b0, a0, a.left)
+        val b1 = op(bm, am, a.right)
+        b1
+      case _ =>
+        Unbound()
+    }
+    val last = op(Unbound(), a0, a)
+    if(a0 ^ ((a ne null) && a.sign))
+      f(Interval.fromBounds(last, Unbound()))
   }
 }
 

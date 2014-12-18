@@ -29,5 +29,5 @@ object IntervalSetArbitrary {
     30 -> randomProfileXor(0, 100, size)
   )
 
-  val arbitrary = Arbitrary[IntervalSet[Long]](randomProfileGen(10))
+  val arbitrary = Arbitrary[IntervalSet[Long]](randomProfileGen(3))
 }
