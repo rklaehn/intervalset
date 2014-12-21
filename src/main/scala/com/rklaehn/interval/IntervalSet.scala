@@ -1,62 +1,92 @@
 package com.rklaehn.interval
 
+import language.implicitConversions
 import spire.algebra.{AdditiveMonoid, Order}
 import spire.math.Interval.{Bound, Closed, Open, Unbound}
-import spire.math.{Rational, Interval}
+import spire.math.{UInt, ULong, Rational, Interval}
 
 import scala.collection.AbstractTraversable
-import com.rklaehn.interval.IntervalSet.IntervalSetElement
 
-final case class IntervalSet[T] private[interval] (below:Boolean, tree:IntervalTrie)(implicit t:IntervalSetElement[T]) extends (T => Boolean) { lhs =>
+sealed abstract class IntervalSet[T] extends (T => Boolean) {
 
-  import IntervalTrie._
-  import IntervalSet._
+  def below(value:T) : Boolean
 
-  private[interval] def ise = implicitly[IntervalSetElement[T]]
+  def at(value:T) : Boolean
 
-  def isConstant : Boolean = tree eq null
+  def above(value:T) : Boolean
 
-  def below(value:T) : Boolean = IntervalTrie.SampleBelow(below, tree, toPrefix(t.toKey(value)))
+  def apply(value:T) : Boolean
 
-  def at(value:T) : Boolean = IntervalTrie.SampleAt(below, tree, toPrefix(t.toKey(value)))
+  def &(rhs:IntervalSet[T]): IntervalSet[T]
 
-  def above(value:T) : Boolean = IntervalTrie.SampleAbove(below, tree, toPrefix(t.toKey(value)))
+  def |(rhs:IntervalSet[T]): IntervalSet[T]
 
-  def apply(value:T) : Boolean = at(value)
+  def ^(rhs:IntervalSet[T]): IntervalSet[T]
 
-  def & (rhs:IntervalSet[T]) = IntervalSet(lhs.below & rhs.below,
-    AndCalculator(lhs.below, lhs.tree, rhs.below, rhs.tree))
+  def unary_~ : IntervalSet[T]
 
-  def | (rhs:IntervalSet[T]) = IntervalSet(lhs.below | rhs.below,
-    OrCalculator(lhs.below, lhs.tree, rhs.below, rhs.tree))
+  def intervals: Traversable[Interval[T]]
 
-  def ^ (rhs:IntervalSet[T]) = IntervalSet(lhs.below ^ rhs.below,
-    XorCalculator(lhs.below, lhs.tree, rhs.below, rhs.tree))
+  def isSupersetOf(rhs:IntervalSet[T]):Boolean
 
-  def unary_~ = IntervalSet(!below, tree)
+  def isProperSupersetOf(rhs:IntervalSet[T]): Boolean
 
-  def isSupersetOf(rhs:IntervalSet[T]) = (lhs | rhs) == lhs
-
-  def isProperSupersetOf(rhs:IntervalSet[T]) = isSupersetOf(rhs) && (rhs != lhs)
-
-  def intervals = new AbstractTraversable[Interval[T]] {
-    override def foreach[U](f: Interval[T] => U): Unit = foreachInterval(below, tree)(f)
-  }
-
-  def edges = new AbstractTraversable[T] {
-    override def foreach[U](f: T => U): Unit = IntervalTrie.foreachEdge(tree)(key => f(t.fromKey(key)))
-  }
-
-  override def toString = {
-    import t._
-    if (isConstant && !below)
-      Interval.empty[T].toString
-    else
-      intervals.map(_.toString).mkString(";")
-  }
+  private[interval] def edges:Traversable[T]
 }
 
 object IntervalSet {
+
+  private def apply[T:IntervalSetElement](below:Boolean, tree:IntervalTrie): IntervalSet[T] =
+    TreeBasedIntervalSet(below, tree, implicitly[IntervalSetElement[T]])
+
+  private final case class TreeBasedIntervalSet[T](below:Boolean, tree:IntervalTrie, implicit val ise:IntervalSetElement[T]) extends IntervalSet[T] { lhs =>
+
+    import IntervalTrie._
+
+    def below(value:T) : Boolean = IntervalTrie.SampleBelow(below, tree, toPrefix(ise.toKey(value)))
+
+    def at(value:T) : Boolean = IntervalTrie.SampleAt(below, tree, toPrefix(ise.toKey(value)))
+
+    def above(value:T) : Boolean = IntervalTrie.SampleAbove(below, tree, toPrefix(ise.toKey(value)))
+
+    def apply(value:T) : Boolean = at(value)
+
+    def & (rhs:IntervalSet[T]) = rhs match {
+      case rhs:TreeBasedIntervalSet[T] =>
+        IntervalSet[T](lhs.below & rhs.below, AndCalculator(lhs.below, lhs.tree, rhs.below, rhs.tree))
+    }
+
+    def | (rhs:IntervalSet[T]) = rhs match {
+      case rhs: TreeBasedIntervalSet[T] =>
+        IntervalSet[T](lhs.below | rhs.below, OrCalculator(lhs.below, lhs.tree, rhs.below, rhs.tree))
+    }
+
+    def ^ (rhs:IntervalSet[T]) = rhs match {
+      case rhs: TreeBasedIntervalSet[T] => IntervalSet[T](lhs.below ^ rhs.below, XorCalculator(lhs.below, lhs.tree, rhs.below, rhs.tree))
+    }
+
+    def unary_~ = IntervalSet[T](!below, tree)
+
+    def isSupersetOf(rhs:IntervalSet[T]) = (lhs | rhs) == lhs
+
+    def isProperSupersetOf(rhs:IntervalSet[T]) = isSupersetOf(rhs) && (rhs != lhs)
+
+    def intervals = new AbstractTraversable[Interval[T]] {
+      override def foreach[U](f: Interval[T] => U): Unit = foreachInterval(below, tree)(f)
+    }
+
+    def edges = new AbstractTraversable[T] {
+      override def foreach[U](f: T => U): Unit = IntervalTrie.foreachEdge(tree)(key => f(ise.fromKey(key)))
+    }
+
+    override def toString = {
+      import ise.ops
+      if ((tree eq null) && !below)
+        Interval.empty[T].toString
+      else
+        intervals.map(_.toString).mkString(";")
+    }
+  }
 
   trait IntervalSetElement[@specialized(Float, Int, Long, Double) T] {
 
@@ -76,7 +106,24 @@ object IntervalSet {
     def fromKey(key:Long) : Long = key
   }
 
-  /*
+  implicit object ULongIntervalSetElement extends IntervalSetElement[ULong] {
+
+    def ops = spire.math.ULong.ULongAlgebra
+
+    def toKey(value:ULong) = value.toLong + Long.MinValue
+
+    def fromKey(key:Long) : ULong = ULong(key - Long.MinValue)
+  }
+
+  implicit object UIntIntervalSetElement extends IntervalSetElement[UInt] {
+
+    def ops = spire.math.UInt.UIntAlgebra
+
+    def toKey(value:UInt) = value.toLong + Long.MinValue
+
+    def fromKey(key:Long) : UInt = UInt((key - Long.MinValue).toInt)
+  }
+
   implicit object IntIntervalSetElement extends IntervalSetElement[Int] {
 
     def ops = spire.std.int.IntAlgebra
@@ -129,7 +176,6 @@ object IntervalSet {
       java.lang.Double.longBitsToDouble(signAndMagnitude)
     }
   }
-  */
 
   import IntervalTrie._
 
@@ -141,7 +187,7 @@ object IntervalSet {
       case 1 => Above(value)
       case 2 => Both(value)
     }
-    new IntervalSet[T](false, bound)
+    IntervalSet[T](false, bound)
   }
 
   def constant[T:IntervalSetElement](value:Boolean) = IntervalSet[T](value, null)
@@ -177,25 +223,28 @@ object IntervalSet {
   }
 
   object Below {
+
     def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, true)
 
     def unapply(l:Leaf) = if(l.at && l.sign) Some(l.key) else None
   }
 
   object Above {
+
     def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), false, true)
 
     def unapply(l:Leaf) = if(!l.at && l.sign) Some(l.key) else None
   }
 
   object Both {
+
     def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, false)
 
     def unapply(l:Leaf) = if(l.at && !l.sign) Some(l.key) else None
   }
 
   private def fromTo[T:IntervalSetElement](a:Leaf, b:Leaf) : IntervalSet[T] = {
-    new IntervalSet[T](false, join(a, b))
+    IntervalSet[T](false, join(a, b))
   }
 
   def parse(text:String) : IntervalSet[Long] = {

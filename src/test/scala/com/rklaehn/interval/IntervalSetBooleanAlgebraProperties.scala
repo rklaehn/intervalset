@@ -8,11 +8,11 @@ import org.scalacheck.Prop._
 import spire.syntax.all._
 
 object IntervalSetBooleanAlgebraProperties
-  extends BooleanAlgebraSpecification[IntervalSet[Long]]("IntervalTrie.BooleanAlgebra") {
+  extends BooleanAlgebraSpecification[IntervalSet[Long]]("IntervalSet.BooleanAlgebra") {
 
-  def algebra = IntervalSetBooleanAlgebra.algebra
+  def algebra = IntervalSetAlgebra.booleanAlgebra
 
-  def eq = IntervalSetBooleanAlgebra.algebra
+  def eq = IntervalSetAlgebra.booleanAlgebra
 
   def arb = IntervalSetArbitrary.arbitrary
 

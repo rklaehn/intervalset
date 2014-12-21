@@ -21,3 +21,10 @@ unmanagedBase in Test <<= baseDirectory { base => base / "test-lib" }
 coverageMinimum := 65
 
 coverageFailOnMinimum := true
+
+scalacOptions ++= Seq("-unchecked", "-feature")
+
+initialCommands in console += """
+import com.rklaehn.interval._
+import spire.math._
+"""

@@ -385,9 +385,6 @@ private[interval] object IntervalTrie {
     }
   }
 
-  /**
-   * Loops over the leafs of the trie in unsigned order of the keys.
-   */
   final def foreachLeaf[U](a0:Boolean, a:IntervalTrie,f : ((Boolean, Leaf)) =>  U) : Unit = a match {
     case a:Branch =>
       foreachLeaf(a0, a.left, f)
