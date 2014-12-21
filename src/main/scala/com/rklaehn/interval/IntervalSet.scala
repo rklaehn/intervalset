@@ -1,5 +1,6 @@
 package com.rklaehn.interval
 
+import com.rklaehn.interval.IntervalTrie.Leaf
 import spire.math.Interval.{Closed, Open, Unbound}
 import spire.math.{Rational, Interval}
 import spire.std.long._
@@ -120,25 +121,32 @@ object IntervalSet {
 
   private implicit def tIsLong[T](value:T)(implicit tl:IntervalSetElement[T]) = tl.toKey(value)
 
-  def fromKind[T:IntervalSetElement](value:T, kind:Int) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), kind))
+  def fromKind[T:IntervalSetElement](value:T, kind:Int) = {
+    val bound = kind match {
+      case 0 => Below(value)
+      case 1 => Above(value)
+      case 2 => Both(value)
+    }
+    new IntervalSet[T](false, bound)
+  }
 
   def constant[T:IntervalSetElement](value:Boolean) = IntervalSet[T](value, null)
 
   def zero[T:IntervalSetElement] = constant[T](false)
 
-  def point[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), Both))
+  def point[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), true, false))
 
-  def atOrAbove[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), Below))
+  def atOrAbove[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), true, true))
 
-  def above[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), Above))
+  def above[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), false, true))
 
   def one[T:IntervalSetElement] = constant[T](true)
 
-  def hole[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), Both))
+  def hole[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), true, false))
 
-  def below[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), Below))
+  def below[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), true, true))
 
-  def atOrBelow[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), Above))
+  def atOrBelow[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), false, true))
 
   def apply[T:IntervalSetElement](interval:Interval[T]) : IntervalSet[T] = interval.fold {
     case (Unbound(), Unbound()) => one[T]
@@ -147,18 +155,29 @@ object IntervalSet {
     case (Unbound(), Closed(x)) => atOrBelow(x)
     case (Open(x),   Unbound()) => above(x)
     case (Closed(x), Unbound()) => atOrAbove(x)
-    case (Closed(a), Closed(b)) => fromTo(a, Below, b, Above)
-    case (Closed(a), Open(b))   => fromTo(a, Below, b, Below)
-    case (Open(a),   Closed(b)) => fromTo(a, Above, b, Above)
-    case (Open(a),   Open(b))   => fromTo(a, Above, b, Below)
+    case (Closed(a), Closed(b)) => fromTo(Below(a), Above(b))
+    case (Closed(a), Open(b))   => fromTo(Below(a), Below(b))
+    case (Open(a),   Closed(b)) => fromTo(Above(a), Above(b))
+    case (Open(a),   Open(b))   => fromTo(Above(a), Below(b))
   }
 
-  private def fromTo[T:IntervalSetElement](a:T, ak:Int, b:T, bk:Int) : IntervalSet[T] = {
-    new IntervalSet[T](false, join(Leaf(toPrefix(a), ak), Leaf(toPrefix(b),bk)))
+  object Below {
+    def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, true)
+  }
+
+  object Above {
+    def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), false, true)
+  }
+
+  object Both {
+    def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, false)
+  }
+
+  private def fromTo[T:IntervalSetElement](a:Leaf, b:Leaf) : IntervalSet[T] = {
+    new IntervalSet[T](false, join(a, b))
   }
 
   def parse(text:String) : IntervalSet[Long] = {
-    import spire.std.long._
     def rationalToLong(r:Rational) : Long = {
       if(r>Long.MaxValue || r<Long.MinValue)
         throw new NumberFormatException("Integer number too large")

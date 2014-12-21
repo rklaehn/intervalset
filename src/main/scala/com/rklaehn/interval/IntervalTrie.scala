@@ -4,7 +4,6 @@ import spire.math.Interval
 import spire.math.Interval.{Closed, Unbound, Open, Bound}
 
 import scala.annotation.switch
-import scala.util.hashing.MurmurHash3
 
 private[interval] object IntervalTrie {
 
@@ -336,28 +335,24 @@ private[interval] object IntervalTrie {
     protected def onLeaf(a0: Boolean, a: Leaf): Boolean = a0 ^ a.above
   }
 
-  def leaf(below:Boolean, above:Boolean, a:Leaf, b:Leaf) = {
-    val kind =
-      if(above && below) Both
-      else if(above) Above
-      else if(below) Below
-      else -1
-    if(kind < 0)
+  def leaf(changeBelow:Boolean, changeAbove:Boolean, a:Leaf, b:Leaf) = {
+    val at = changeBelow
+    val sign = changeBelow ^ changeAbove
+    if(!changeBelow && !changeAbove)
       null
-    else if(kind == a.kind)
+    else if(at == a.at && sign == a.sign)
       a
-    else if(kind == b.kind)
+    else if(at == b.at && sign == b.sign)
       b
     else
-      Leaf(a.prefix, kind)
+      Leaf(a.prefix, at, sign)
   }
 
   /**
-   * A leaf. This is going to be changed to 4 different leaf types for the 4 possible combinations of at and after
+   * A leaf.
    * @param prefix the prefix, which in case of a leaf is identical to the key
-   * @param kind the kind of the leaf
    */
-  final case class Leaf(prefix: Long, kind:Int) extends IntervalTrie {
+  final case class Leaf(prefix: Long, at:Boolean, sign:Boolean) extends IntervalTrie {
 
     /**
      * For a leaf, the prefix is the key
@@ -369,19 +364,7 @@ private[interval] object IntervalTrie {
      */
     def level = -1.toByte
 
-    def sign = kind == Below || kind == Above
-
-    def at = (kind: @switch) match {
-      case Below => true
-      case Above => false
-      case Both => true
-    }
-
-    def above = (kind: @switch) match {
-      case Below => true
-      case Above => true
-      case Both => false
-    }
+    def above = sign
   }
 
   @inline final val Below = 0
@@ -435,15 +418,15 @@ private[interval] object IntervalTrie {
   final def foreachInterval[U](a0:Boolean, a:IntervalTrie)(f:Interval[Long] => U): Unit = {
     import spire.std.long._
     def op(b0:Bound[Long], a0:Boolean, a:IntervalTrie): Bound[Long] = a match {
-      case a: Leaf if a.kind == Below =>
+      case a: Leaf if a.sign && a.at =>
         if(a0)
           f(Interval.fromBounds(b0, Open(a.key)))
         Closed(a.key)
-      case a: Leaf if a.kind == Above =>
+      case a: Leaf if a.sign && a.above =>
         if(a0)
           f(Interval.fromBounds(b0, Closed(a.key)))
         Open(a.key)
-      case a:Leaf if a.kind == Both =>
+      case a:Leaf if !a.sign && a.at =>
         if(a0)
           f(Interval.fromBounds(b0, Open(a.key)))
         else
