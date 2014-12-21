@@ -67,15 +67,6 @@ object IntervalSet {
     def fromKey(key:Long) : T
   }
 
-  implicit object IntIntervalSetElement extends IntervalSetElement[Int] {
-
-    def ops = spire.std.int.IntAlgebra
-
-    def toKey(value:Int) = value
-
-    def fromKey(key:Long) : Int = key.toInt
-  }
-
   implicit object LongIntervalSetElement extends IntervalSetElement[Long] {
 
     def ops = spire.std.long.LongAlgebra
@@ -83,6 +74,16 @@ object IntervalSet {
     def toKey(value:Long) = value
 
     def fromKey(key:Long) : Long = key
+  }
+
+  /*
+  implicit object IntIntervalSetElement extends IntervalSetElement[Int] {
+
+    def ops = spire.std.int.IntAlgebra
+
+    def toKey(value:Int) = value
+
+    def fromKey(key:Long) : Int = key.toInt
   }
 
   implicit object FloatIntervalSetElement extends IntervalSetElement[Float] {
@@ -128,6 +129,7 @@ object IntervalSet {
       java.lang.Double.longBitsToDouble(signAndMagnitude)
     }
   }
+  */
 
   import IntervalTrie._
 
@@ -163,6 +165,7 @@ object IntervalSet {
   def apply[T:IntervalSetElement](interval:Interval[T]) : IntervalSet[T] = interval.fold {
     case (Unbound(), Unbound()) => one[T]
     case (Open(a),   Open(b))   if a == b => zero[T]
+    case (Closed(a), Closed(b)) if a == b => point(a)
     case (Unbound(), Open(x))   => below(x)
     case (Unbound(), Closed(x)) => atOrBelow(x)
     case (Open(x),   Unbound()) => above(x)
@@ -204,8 +207,9 @@ object IntervalSet {
         r.toLong
     }
     def intervalToIntervalSet(i:Interval[Long]) : IntervalSet[Long] = apply(i)
-    val intervals = text.split(';').map(Interval.apply).map(_.mapBounds(rationalToLong)(la,la)).map(intervalToIntervalSet)
-    (zero[Long] /: intervals)(_ | _)
+    val intervals = text.split(';').map(IntervalParser.apply).map(_.mapBounds(rationalToLong)(la,la))
+    val simpleSets = intervals.map(intervalToIntervalSet)
+    (zero[Long] /: simpleSets)(_ | _)
   }
 
   final def foreachInterval[T:IntervalSetElement, U](a0:Boolean, a:IntervalTrie)(f:Interval[T] => U): Unit = {
@@ -227,7 +231,7 @@ object IntervalSet {
           f(Interval.point(fromKey(a)))
         Open(fromKey(a))
       case a:Branch =>
-        val am = a0 ^ a.sign
+        val am = a0 ^ a.left.sign
         val bm = op(b0, a0, a.left)
         val b1 = op(bm, am, a.right)
         b1

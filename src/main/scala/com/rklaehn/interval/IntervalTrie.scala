@@ -362,10 +362,6 @@ private[interval] object IntervalTrie {
     @inline def above = sign
   }
 
-  @inline final val Below = 0
-  @inline final val Above = 1
-  @inline final val Both = 2
-
   /**
    * A branch
    * @param prefix the common prefix of both children

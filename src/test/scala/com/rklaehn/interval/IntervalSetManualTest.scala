@@ -5,7 +5,6 @@ import org.junit.Test
 
 class IntervalSetManualTest {
 
-  import IntervalTrie._
   import IntervalSet._
 
   @Test
@@ -23,5 +22,14 @@ class IntervalSetManualTest {
     assertEquals(hole(1L), a | d)
     assertEquals(above(1L), a & d)
     assertEquals(below(1L), a ^ d)
+  }
+
+  @Test
+  def parseTest(): Unit = {
+    val atext = "[46]"
+//    val atext = "(-∞, 34);(61, 69];(69, ∞)"
+    val b = IntervalSet.parse(atext)
+    val btext = b.toString
+    println(s"$atext $btext")
   }
 }

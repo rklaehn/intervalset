@@ -62,14 +62,18 @@ object IntervalTrieSampleProperties extends Properties("TreeValueSet2.Sample") {
     binarySampleTest(a, b, a ^ b, _ ^ _)
   }
 
-//  property("equality") = forAll { a: IntervalTrie =>
-//    ~a === negate(a)
-//  }
-//
-//  property("toStringParse") = forAll { a: IntervalTrie =>
-//    val atext = IntervalTrie.format(a)
-//    val b = IntervalTrie.parse(atext)
-//    val btext = IntervalTrie.format(b)
-//    a == b
-//  }
+  /*
+  property("equality") = forAll { a: IntervalTrie =>
+    ~a === negate(a)
+  }
+  */
+
+  property("toStringParse") = forAll { a: IntervalSet[Long] =>
+    val atext = a.toString
+    val b = IntervalSet.parse(atext)
+    val btext = b.toString
+    if(a!=b)
+      println(s"$atext $btext")
+    a == b
+  }
 }
