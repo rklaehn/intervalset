@@ -55,61 +55,64 @@ final case class IntervalSet[T] private[immutable] (below:Boolean, tree:Interval
 
 object IntervalSet {
 
-  trait IntervalSetElement[@specialized(Long, Double) T] extends Any {
+  trait IntervalSetElement[@specialized(Float, Int, Long, Double) T] extends Any {
 
     def toKey(value:T) : Long
 
     def fromKey(key:Long) : T
   }
 
-  implicit object intIsIntervalSetElement extends IntervalSetElement[Int] {
+  implicit object IntIntervalSetElement extends IntervalSetElement[Int] {
 
-    def toKey(value:Int) = value - Long.MinValue
+    def toKey(value:Int) = value
 
-    def fromKey(key:Long) : Int = {
-      val value = (key + Long.MinValue)
-      if(value < Int.MinValue)
-        Int.MinValue
-      else if(value > Int.MaxValue)
-        Int.MaxValue
-      else
-        value.toInt
-    }
+    def fromKey(key:Long) : Int = key.toInt
   }
 
-  implicit object longIsIntervalSetElement extends IntervalSetElement[Long] {
+  implicit object LongIntervalSetElement extends IntervalSetElement[Long] {
 
     def toKey(value:Long) = value
 
     def fromKey(key:Long) : Long = key
   }
 
-  implicit object doubleIsIntervalSetElement extends IntervalSetElement[Double] {
+  implicit object FloatIntervalSetElement extends IntervalSetElement[Float] {
 
-    private val minKey = toKey(Double.NegativeInfinity)
-
-    private val maxKey = toKey(Double.PositiveInfinity)
-
-    @inline private final def unsigned_<(i: Long, j: Long) = (i < j) ^ (i < 0L) ^ (j < 0L)
-
-    def toKey(value:Double) = {
+    def toKey(value:Float): Long = {
       if(value.isNaN)
         throw new IllegalArgumentException("NaN")
       // sign and magnitude signed integer
       val signAndMagnitude = java.lang.Double.doubleToLongBits(value)
       // two's complement signed integer: if the sign bit is set, negate everything except the sign bit
       val twosComplement = if(signAndMagnitude>=0) signAndMagnitude else (-signAndMagnitude | (1L<<63))
-      // rotate because the radix tree uses unsigned integers
       twosComplement
     }
 
-    def fromKey(key:Long) = {
-      val twosComplement = if(key < minKey) minKey else if(maxKey < key) maxKey else key
+    def fromKey(twosComplement:Long): Float = {
       // sign and magnitude signed integer: if the sign bit is set, negate everything except the sign bit
       val signAndMagnitude = if(twosComplement>=0) twosComplement else (-twosComplement | (1L<<63))
       // double from sign and magnitude signed integer
-      val value = java.lang.Double.longBitsToDouble(signAndMagnitude)
-      value
+      java.lang.Float.intBitsToFloat(signAndMagnitude.toInt)
+    }
+  }
+
+  implicit object DoubleIntervalSetElement extends IntervalSetElement[Double] {
+
+    def toKey(value:Double): Long = {
+      if(value.isNaN)
+        throw new IllegalArgumentException("NaN")
+      // sign and magnitude signed integer
+      val signAndMagnitude = java.lang.Double.doubleToLongBits(value)
+      // two's complement signed integer: if the sign bit is set, negate everything except the sign bit
+      val twosComplement = if(signAndMagnitude>=0) signAndMagnitude else (-signAndMagnitude | (1L<<63))
+      twosComplement
+    }
+
+    def fromKey(twosComplement:Long): Double = {
+      // sign and magnitude signed integer: if the sign bit is set, negate everything except the sign bit
+      val signAndMagnitude = if(twosComplement>=0) twosComplement else (-twosComplement | (1L<<63))
+      // double from sign and magnitude signed integer
+      java.lang.Double.longBitsToDouble(signAndMagnitude)
     }
   }
 
