@@ -3,14 +3,16 @@ package com.rklaehn.interval
 import language.implicitConversions
 import spire.algebra.{AdditiveMonoid, Order}
 import spire.math.Interval.{Bound, Closed, Open, Unbound}
-import spire.math.{UInt, ULong, Rational, Interval}
+import spire.math._
 
 import scala.annotation.tailrec
 import scala.collection.AbstractTraversable
 
 sealed abstract class IntervalSet[T] extends (T => Boolean) {
 
-  def isContiguous : Boolean
+  def isEmpty: Boolean
+
+  def isContiguous: Boolean
 
   def hull: Interval[T]
 
@@ -41,100 +43,6 @@ sealed abstract class IntervalSet[T] extends (T => Boolean) {
 
 object IntervalSet {
 
-  private def apply[T:IntervalSetElement](below:Boolean, tree:IntervalTrie): IntervalSet[T] =
-    TreeBasedIntervalSet(below, tree, implicitly[IntervalSetElement[T]])
-
-  private final case class TreeBasedIntervalSet[T](belowAll:Boolean, tree:IntervalTrie, implicit val ise:IntervalSetElement[T]) extends IntervalSet[T] { lhs =>
-
-    import IntervalTrie._
-
-    def aboveAll: Boolean = if(tree eq null) belowAll else belowAll ^ tree.sign
-
-    def isContiguous = if(belowAll) {
-      tree match {
-        case a:Leaf => a.sign
-        case null => true
-        case _ => false
-      }
-    } else {
-      tree match {
-        case _:Leaf => true
-        case Branch(_,_,a:Leaf, b:Leaf) => a.sign & b.sign
-        case null => true
-        case _ => false
-      }
-    }
-
-    def hull: Interval[T] = {
-      implicit val ops = ise.ops
-      @tailrec
-      def lowerBound(a:IntervalTrie) : Bound[T] = a match {
-        case a:Branch => lowerBound(a.left)
-        case Above(x) => Open(ise.fromKey(x))
-        case Below(x) => Closed(ise.fromKey(x))
-        case Both(x) => Closed(ise.fromKey(x))
-      }
-      @tailrec
-      def upperBound(a:IntervalTrie) : Bound[T] = a match {
-        case a:Branch => upperBound(a.right)
-        case Above(x) => Closed(ise.fromKey(x))
-        case Below(x) => Open(ise.fromKey(x))
-        case Both(x) => Closed(ise.fromKey(x))
-      }
-      if(tree eq null) {
-        if (belowAll) Interval.all[T] else Interval.empty[T]
-      } else {
-        val lower = if(belowAll) Unbound[T] else lowerBound(tree)
-        val upper = if(aboveAll) Unbound[T] else upperBound(tree)
-        Interval.fromBounds(lower, upper)
-      }
-    }
-
-    def below(value:T) : Boolean = SampleBelow(belowAll, tree, toPrefix(ise.toKey(value)))
-
-    def at(value:T) : Boolean = SampleAt(belowAll, tree, toPrefix(ise.toKey(value)))
-
-    def above(value:T) : Boolean = SampleAbove(belowAll, tree, toPrefix(ise.toKey(value)))
-
-    def apply(value:T) : Boolean = at(value)
-
-    def & (rhs:IntervalSet[T]) = rhs match {
-      case rhs:TreeBasedIntervalSet[T] =>
-        IntervalSet[T](lhs.belowAll & rhs.belowAll, AndCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree))
-    }
-
-    def | (rhs:IntervalSet[T]) = rhs match {
-      case rhs: TreeBasedIntervalSet[T] =>
-        IntervalSet[T](lhs.belowAll | rhs.belowAll, OrCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree))
-    }
-
-    def ^ (rhs:IntervalSet[T]) = rhs match {
-      case rhs: TreeBasedIntervalSet[T] => IntervalSet[T](lhs.belowAll ^ rhs.belowAll, XorCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree))
-    }
-
-    def unary_~ = IntervalSet[T](!belowAll, tree)
-
-    def isSupersetOf(rhs:IntervalSet[T]) = (lhs | rhs) == lhs
-
-    def isProperSupersetOf(rhs:IntervalSet[T]) = isSupersetOf(rhs) && (rhs != lhs)
-
-    def intervals = new AbstractTraversable[Interval[T]] {
-      override def foreach[U](f: Interval[T] => U): Unit = foreachInterval(belowAll, tree)(f)
-    }
-
-    def edges = new AbstractTraversable[T] {
-      override def foreach[U](f: T => U): Unit = IntervalTrie.foreachEdge(tree)(key => f(ise.fromKey(key)))
-    }
-
-    override def toString = {
-      import ise.ops
-      if ((tree eq null) && !belowAll)
-        Interval.empty[T].toString
-      else
-        intervals.map(_.toString).mkString(";")
-    }
-  }
-
   trait IntervalSetElement[@specialized(Float, Int, Long, Double) T] {
 
     implicit def ops:Order[T] with AdditiveMonoid[T]
@@ -144,31 +52,22 @@ object IntervalSet {
     def fromKey(key:Long) : T
   }
 
-  implicit object LongIntervalSetElement extends IntervalSetElement[Long] {
+  implicit object ByteIntervalSetElement extends IntervalSetElement[Byte] {
 
-    def ops = spire.std.long.LongAlgebra
+    def ops = spire.std.byte.ByteAlgebra
 
-    def toKey(value:Long) = value
+    def toKey(value:Byte) = value
 
-    def fromKey(key:Long) : Long = key
+    def fromKey(key:Long): Byte = key.toByte
   }
 
-  implicit object ULongIntervalSetElement extends IntervalSetElement[ULong] {
+  implicit object ShortIntervalSetElement extends IntervalSetElement[Short] {
 
-    def ops = spire.math.ULong.ULongAlgebra
+    def ops = spire.std.short.ShortAlgebra
 
-    def toKey(value:ULong) = value.toLong + Long.MinValue
+    def toKey(value:Short) = value
 
-    def fromKey(key:Long) : ULong = ULong(key - Long.MinValue)
-  }
-
-  implicit object UIntIntervalSetElement extends IntervalSetElement[UInt] {
-
-    def ops = spire.math.UInt.UIntAlgebra
-
-    def toKey(value:UInt) = value.toLong + Long.MinValue
-
-    def fromKey(key:Long) : UInt = UInt((key - Long.MinValue).toInt)
+    def fromKey(key:Long): Short = key.toShort
   }
 
   implicit object IntIntervalSetElement extends IntervalSetElement[Int] {
@@ -178,6 +77,15 @@ object IntervalSet {
     def toKey(value:Int) = value
 
     def fromKey(key:Long) : Int = key.toInt
+  }
+
+  implicit object LongIntervalSetElement extends IntervalSetElement[Long] {
+
+    def ops = spire.std.long.LongAlgebra
+
+    def toKey(value:Long) = value
+
+    def fromKey(key:Long) : Long = key
   }
 
   implicit object FloatIntervalSetElement extends IntervalSetElement[Float] {
@@ -222,6 +130,42 @@ object IntervalSet {
       // double from sign and magnitude signed integer
       java.lang.Double.longBitsToDouble(signAndMagnitude)
     }
+  }
+
+  implicit object UByteIntervalSetElement extends IntervalSetElement[UByte] {
+
+    def ops = spire.math.UByte.UByteAlgebra
+
+    def toKey(value:UByte) = value.toLong
+
+    def fromKey(key:Long) : UByte = UByte(key.toByte)
+  }
+
+  implicit object UShortIntervalSetElement extends IntervalSetElement[UShort] {
+
+    def ops = spire.math.UShort.UShortAlgebra
+
+    def toKey(value:UShort) = value.toLong
+
+    def fromKey(key:Long) : UShort = UShort(key.toShort)
+  }
+
+  implicit object UIntIntervalSetElement extends IntervalSetElement[UInt] {
+
+    def ops = spire.math.UInt.UIntAlgebra
+
+    def toKey(value:UInt) = value.toLong
+
+    def fromKey(key:Long) : UInt = UInt(key.toInt)
+  }
+
+  implicit object ULongIntervalSetElement extends IntervalSetElement[ULong] {
+
+    def ops = spire.math.ULong.ULongAlgebra
+
+    def toKey(value:ULong) = value.toLong + Long.MinValue
+
+    def fromKey(key:Long) : ULong = ULong(key - Long.MinValue)
   }
 
   import IntervalTrie._
@@ -338,4 +282,102 @@ object IntervalSet {
     if(a0 ^ ((a ne null) && a.sign))
       f(Interval.fromBounds(last, Unbound()))
   }
+
+
+  private def apply[T:IntervalSetElement](below:Boolean, tree:IntervalTrie): IntervalSet[T] =
+    TreeBasedIntervalSet(below, tree, implicitly[IntervalSetElement[T]])
+
+  private final case class TreeBasedIntervalSet[T](belowAll:Boolean, tree:IntervalTrie, implicit val ise:IntervalSetElement[T]) extends IntervalSet[T] { lhs =>
+
+    import IntervalTrie._
+
+    def aboveAll: Boolean = if(tree eq null) belowAll else belowAll ^ tree.sign
+
+    def isEmpty = !belowAll && (tree eq null)
+
+    def isContiguous = if(belowAll) {
+      tree match {
+        case a:Leaf => a.sign
+        case null => true
+        case _ => false
+      }
+    } else {
+      tree match {
+        case _:Leaf => true
+        case Branch(_,_,a:Leaf, b:Leaf) => a.sign & b.sign
+        case null => true
+        case _ => false
+      }
+    }
+
+    def hull: Interval[T] = {
+      implicit val ops = ise.ops
+      @tailrec
+      def lowerBound(a:IntervalTrie) : Bound[T] = a match {
+        case a:Branch => lowerBound(a.left)
+        case Above(x) => Open(ise.fromKey(x))
+        case Below(x) => Closed(ise.fromKey(x))
+        case Both(x) => Closed(ise.fromKey(x))
+      }
+      @tailrec
+      def upperBound(a:IntervalTrie) : Bound[T] = a match {
+        case a:Branch => upperBound(a.right)
+        case Above(x) => Closed(ise.fromKey(x))
+        case Below(x) => Open(ise.fromKey(x))
+        case Both(x) => Closed(ise.fromKey(x))
+      }
+      if(isEmpty) {
+        Interval.empty[T]
+      } else {
+        val lower = if(belowAll) Unbound[T] else lowerBound(tree)
+        val upper = if(aboveAll) Unbound[T] else upperBound(tree)
+        Interval.fromBounds(lower, upper)
+      }
+    }
+
+    def below(value:T) : Boolean = SampleBelow(belowAll, tree, toPrefix(ise.toKey(value)))
+
+    def at(value:T) : Boolean = SampleAt(belowAll, tree, toPrefix(ise.toKey(value)))
+
+    def above(value:T) : Boolean = SampleAbove(belowAll, tree, toPrefix(ise.toKey(value)))
+
+    def apply(value:T) : Boolean = at(value)
+
+    def & (rhs:IntervalSet[T]) = rhs match {
+      case rhs:TreeBasedIntervalSet[T] =>
+        IntervalSet[T](lhs.belowAll & rhs.belowAll, AndCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree))
+    }
+
+    def | (rhs:IntervalSet[T]) = rhs match {
+      case rhs: TreeBasedIntervalSet[T] =>
+        IntervalSet[T](lhs.belowAll | rhs.belowAll, OrCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree))
+    }
+
+    def ^ (rhs:IntervalSet[T]) = rhs match {
+      case rhs: TreeBasedIntervalSet[T] => IntervalSet[T](lhs.belowAll ^ rhs.belowAll, XorCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree))
+    }
+
+    def unary_~ = IntervalSet[T](!belowAll, tree)
+
+    def isSupersetOf(rhs:IntervalSet[T]) = (lhs | rhs) == lhs
+
+    def isProperSupersetOf(rhs:IntervalSet[T]) = isSupersetOf(rhs) && (rhs != lhs)
+
+    def intervals = new AbstractTraversable[Interval[T]] {
+      override def foreach[U](f: Interval[T] => U): Unit = foreachInterval(belowAll, tree)(f)
+    }
+
+    def edges = new AbstractTraversable[T] {
+      override def foreach[U](f: T => U): Unit = IntervalTrie.foreachEdge(tree)(key => f(ise.fromKey(key)))
+    }
+
+    override def toString = {
+      import ise.ops
+      if ((tree eq null) && !belowAll)
+        Interval.empty[T].toString
+      else
+        intervals.map(_.toString).mkString(";")
+    }
+  }
+
 }

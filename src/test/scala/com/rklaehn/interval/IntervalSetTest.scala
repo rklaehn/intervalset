@@ -4,7 +4,7 @@ import org.junit.Assert._
 import org.junit.Test
 import spire.algebra.Order
 import spire.math.Interval.Closed
-import spire.math.{Interval, ULong, UInt}
+import spire.math._
 
 class IntervalSetTest {
 
@@ -72,25 +72,43 @@ class IntervalSetTest {
 
     }
 
-    //Long
-    testEdge(1L)
-    testEdge(-1L)
-    testInterval(Long.MinValue, Long.MaxValue)
+    //Int
+    testEdge(1.toByte)
+    testEdge(-1.toByte)
+    testInterval(Byte.MinValue, Byte.MaxValue)
+
+    //Short
+    testEdge(1.toShort)
+    testEdge(-1.toShort)
+    testInterval(Short.MinValue, Short.MaxValue)
 
     //Int
     testEdge(1)
     testEdge(-1)
     testInterval(Int.MinValue, Int.MaxValue)
 
-    //Double
-    testEdge(1.0)
-    testEdge(-1.0)
-    testInterval(Double.MinValue, Double.MaxValue)
+    //Long
+    testEdge(1L)
+    testEdge(-1L)
+    testInterval(Long.MinValue, Long.MaxValue)
 
     //Float
     testEdge(1.0f)
     testEdge(-1.0f)
     testInterval(Float.MinValue, Float.MaxValue)
+
+    //Double
+    testEdge(1.0)
+    testEdge(-1.0)
+    testInterval(Double.MinValue, Double.MaxValue)
+
+    //UByte
+    testEdge(UByte(1))
+    testInterval(UByte.MinValue, UByte.MaxValue)
+
+    //UShort
+    testEdge(UShort(1))
+    testInterval(UShort.MinValue, UShort.MaxValue)
 
     //UInt
     testEdge(UInt(1))
