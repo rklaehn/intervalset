@@ -10,6 +10,8 @@ Boundaries are either inclusive or exclusive, so ]0..2] is different to [1..2]. 
 
 Supported fundamental operations are union, intersection, negation. There is a zero element (the empty interval set) and a one element (the interval set containing all long integers). So it is possible to define a [boolean algebra](https://github.com/non/spire/blob/a0211697d993cade7c3618076ae997f84a6b5f3c/core/src/main/scala/spire/algebra/Bool.scala) for intervals. This is used in property-based testing using scalacheck.
 
+
+
 ## Time Complexity
 
 ### Set/Set operations
@@ -32,7 +34,7 @@ n = lhs.size + rhs.size
 
 ## Memory usage
 
-Leaves have just 8 bytes of user data, so they should take as much space as a boxed long. Branches have two pointers, one 8 byte long and less than 8 bytes of byte/boolean values, giving a total of 16 bytes of direct user data and two pointers. So in total, expect about 40 bytes per boundary on a 64bit JVM with CompressedOOPS enabled. YMMV.
+Leaves have just 10 bytes of user data, so they should take as much space as a boxed long. I got 24 bytes when measuring with jamm. Branches have two pointers, one 8 byte long and 2 bytes of byte/boolean values, giving a total of 10 bytes of direct user data and two pointers. I got 32 bytes with jamm. So in total, expect about 56 bytes per boundary on a 64bit JVM with CompressedOOPS enabled. YMMV.
 
 ## Structural sharing
 
