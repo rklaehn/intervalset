@@ -152,11 +152,6 @@ class IntervalSetTest {
   }
 
   @Test
-  def bothUnapplyTest(): Unit = {
-    assertEquals(None, IntervalSet.Both.unapply(IntervalTrie.Leaf(0,false,false)))
-  }
-
-  @Test
   def algebraTest(): Unit = {
     val algebra = IntervalSetAlgebra.booleanAlgebra[Long]
     val a = IntervalSet.above(1L)

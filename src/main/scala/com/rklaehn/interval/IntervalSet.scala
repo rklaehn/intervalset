@@ -227,7 +227,7 @@ object IntervalSet {
     def unapply(l:Leaf) = if(!l.at && l.sign) Some(l.key) else None
   }
 
-  private[interval] object Both {
+  private object Both {
 
     def apply[T: Element](value:T) = Leaf(toPrefix(value), true, false)
 
@@ -283,7 +283,6 @@ object IntervalSet {
       f(Interval.fromBounds(last, Unbound()))
   }
 
-
   private def apply[T:Element](below:Boolean, tree:IntervalTrie): IntervalSet[T] =
     TreeBasedIntervalSet(below, tree, implicitly[Element[T]])
 
@@ -322,9 +321,9 @@ object IntervalSet {
       @tailrec
       def upperBound(a:IntervalTrie) : Bound[T] = a match {
         case a:Branch => upperBound(a.right)
+        case Both(x) => Closed(ise.fromLong(x))
         case Above(x) => Closed(ise.fromLong(x))
         case Below(x) => Open(ise.fromLong(x))
-        case Both(x) => Closed(ise.fromLong(x))
       }
       if(isEmpty) {
         Interval.empty[T]
