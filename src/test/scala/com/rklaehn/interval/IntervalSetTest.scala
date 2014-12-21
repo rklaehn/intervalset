@@ -57,14 +57,14 @@ class IntervalSetTest {
 
   @Test
   def predefinedTypesTest(): Unit = {
-    def testEdge[T:IntervalSetElement](value:T) : Unit = {
-      implicit val order : Order[T] = implicitly[IntervalSetElement[T]].ops
+    def testEdge[T:Element](value:T) : Unit = {
+      implicit val order : Order[T] = implicitly[Element[T]].ops
       assertEquals(IndexedSeq(value), IntervalSet.above(value).edges.toIndexedSeq)
       assertEquals(Interval.above(value).toString, IntervalSet.above(value).toString)
     }
 
-    def testInterval[T:IntervalSetElement](min:T, max:T) : Unit = {
-      implicit val ops = implicitly[IntervalSetElement[T]].ops
+    def testInterval[T:Element](min:T, max:T) : Unit = {
+      implicit val ops = implicitly[Element[T]].ops
       val interval = Interval.fromBounds(Closed(min), Closed(max))
       val intervalSet = IntervalSet(interval)
       assertEquals(IndexedSeq(min,max), intervalSet.edges.toIndexedSeq)

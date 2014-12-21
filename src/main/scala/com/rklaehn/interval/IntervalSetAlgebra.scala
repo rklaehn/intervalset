@@ -1,11 +1,11 @@
 package com.rklaehn.interval
 
-import com.rklaehn.interval.IntervalSet.IntervalSetElement
+import com.rklaehn.interval.IntervalSet.Element
 import spire.algebra.{BooleanAlgebra, Eq}
 
 object IntervalSetAlgebra {
 
-  implicit def booleanAlgebra[T:IntervalSetElement] = new BooleanAlgebra[IntervalSet[T]] with Eq[IntervalSet[T]] {
+  implicit def booleanAlgebra[T:Element] = new BooleanAlgebra[IntervalSet[T]] with Eq[IntervalSet[T]] {
 
     def eqv(x: IntervalSet[T], y: IntervalSet[T]) = x == y
 

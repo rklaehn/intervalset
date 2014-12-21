@@ -43,56 +43,56 @@ sealed abstract class IntervalSet[T] extends (T => Boolean) {
 
 object IntervalSet {
 
-  trait IntervalSetElement[@specialized(Float, Int, Long, Double) T] {
+  trait Element[@specialized(Float, Int, Long, Double) T] {
 
     implicit def ops:Order[T] with AdditiveMonoid[T]
 
-    def toKey(value:T) : Long
+    def toLong(value:T) : Long
 
-    def fromKey(key:Long) : T
+    def fromLong(key:Long) : T
   }
 
-  implicit object ByteIntervalSetElement extends IntervalSetElement[Byte] {
+  implicit object ByteElement extends Element[Byte] {
 
     def ops = spire.std.byte.ByteAlgebra
 
-    def toKey(value:Byte) = value
+    def toLong(value:Byte) = value
 
-    def fromKey(key:Long): Byte = key.toByte
+    def fromLong(key:Long): Byte = key.toByte
   }
 
-  implicit object ShortIntervalSetElement extends IntervalSetElement[Short] {
+  implicit object ShortElement extends Element[Short] {
 
     def ops = spire.std.short.ShortAlgebra
 
-    def toKey(value:Short) = value
+    def toLong(value:Short) = value
 
-    def fromKey(key:Long): Short = key.toShort
+    def fromLong(key:Long): Short = key.toShort
   }
 
-  implicit object IntIntervalSetElement extends IntervalSetElement[Int] {
+  implicit object IntElement extends Element[Int] {
 
     def ops = spire.std.int.IntAlgebra
 
-    def toKey(value:Int) = value
+    def toLong(value:Int) = value
 
-    def fromKey(key:Long) : Int = key.toInt
+    def fromLong(key:Long) : Int = key.toInt
   }
 
-  implicit object LongIntervalSetElement extends IntervalSetElement[Long] {
+  implicit object LongElement extends Element[Long] {
 
     def ops = spire.std.long.LongAlgebra
 
-    def toKey(value:Long) = value
+    def toLong(value:Long) = value
 
-    def fromKey(key:Long) : Long = key
+    def fromLong(key:Long) : Long = key
   }
 
-  implicit object FloatIntervalSetElement extends IntervalSetElement[Float] {
+  implicit object FloatElement extends Element[Float] {
 
     def ops = spire.std.float.FloatAlgebra
 
-    def toKey(value:Float): Long = {
+    def toLong(value:Float): Long = {
       if(value.isNaN)
         throw new IllegalArgumentException("NaN")
       // sign and magnitude signed integer
@@ -102,7 +102,7 @@ object IntervalSet {
       twosComplement
     }
 
-    def fromKey(twosComplement:Long): Float = {
+    def fromLong(twosComplement:Long): Float = {
       // sign and magnitude signed integer: if the sign bit is set, negate everything except the sign bit
       val signAndMagnitude = if(twosComplement>=0) twosComplement else (-twosComplement | (1L<<63))
       // double from sign and magnitude signed integer
@@ -110,11 +110,11 @@ object IntervalSet {
     }
   }
 
-  implicit object DoubleIntervalSetElement extends IntervalSetElement[Double] {
+  implicit object DoubleElement extends Element[Double] {
 
     def ops = spire.std.double.DoubleAlgebra
 
-    def toKey(value:Double): Long = {
+    def toLong(value:Double): Long = {
       if(value.isNaN)
         throw new IllegalArgumentException("NaN")
       // sign and magnitude signed integer
@@ -124,7 +124,7 @@ object IntervalSet {
       twosComplement
     }
 
-    def fromKey(twosComplement:Long): Double = {
+    def fromLong(twosComplement:Long): Double = {
       // sign and magnitude signed integer: if the sign bit is set, negate everything except the sign bit
       val signAndMagnitude = if(twosComplement>=0) twosComplement else (-twosComplement | (1L<<63))
       // double from sign and magnitude signed integer
@@ -132,47 +132,47 @@ object IntervalSet {
     }
   }
 
-  implicit object UByteIntervalSetElement extends IntervalSetElement[UByte] {
+  implicit object UByteElement extends Element[UByte] {
 
     def ops = spire.math.UByte.UByteAlgebra
 
-    def toKey(value:UByte) = value.toLong
+    def toLong(value:UByte) = value.toLong
 
-    def fromKey(key:Long) : UByte = UByte(key.toByte)
+    def fromLong(key:Long) : UByte = UByte(key.toByte)
   }
 
-  implicit object UShortIntervalSetElement extends IntervalSetElement[UShort] {
+  implicit object UShortElement extends Element[UShort] {
 
     def ops = spire.math.UShort.UShortAlgebra
 
-    def toKey(value:UShort) = value.toLong
+    def toLong(value:UShort) = value.toLong
 
-    def fromKey(key:Long) : UShort = UShort(key.toShort)
+    def fromLong(key:Long) : UShort = UShort(key.toShort)
   }
 
-  implicit object UIntIntervalSetElement extends IntervalSetElement[UInt] {
+  implicit object UIntElement extends Element[UInt] {
 
     def ops = spire.math.UInt.UIntAlgebra
 
-    def toKey(value:UInt) = value.toLong
+    def toLong(value:UInt) = value.toLong
 
-    def fromKey(key:Long) : UInt = UInt(key.toInt)
+    def fromLong(key:Long) : UInt = UInt(key.toInt)
   }
 
-  implicit object ULongIntervalSetElement extends IntervalSetElement[ULong] {
+  implicit object ULongElement extends Element[ULong] {
 
     def ops = spire.math.ULong.ULongAlgebra
 
-    def toKey(value:ULong) = value.toLong + Long.MinValue
+    def toLong(value:ULong) = value.toLong + Long.MinValue
 
-    def fromKey(key:Long) : ULong = ULong(key - Long.MinValue)
+    def fromLong(key:Long) : ULong = ULong(key - Long.MinValue)
   }
 
   import IntervalTrie._
 
-  private implicit def tIsLong[T](value:T)(implicit tl:IntervalSetElement[T]) = tl.toKey(value)
+  private implicit def tIsLong[T](value:T)(implicit tl:Element[T]) = tl.toLong(value)
 
-  private[interval] def fromKind[T:IntervalSetElement](value:T, kind:Int) = {
+  private[interval] def fromKind[T:Element](value:T, kind:Int) = {
     val bound = kind match {
       case 0 => Below(value)
       case 1 => Above(value)
@@ -181,25 +181,25 @@ object IntervalSet {
     IntervalSet[T](false, bound)
   }
 
-  def constant[T:IntervalSetElement](value:Boolean) = IntervalSet[T](value, null)
+  def constant[T:Element](value:Boolean) = IntervalSet[T](value, null)
 
-  def zero[T:IntervalSetElement] = constant[T](false)
+  def zero[T:Element] = constant[T](false)
 
-  def point[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), true, false))
+  def point[T:Element](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), true, false))
 
-  def atOrAbove[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), true, true))
+  def atOrAbove[T:Element](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), true, true))
 
-  def above[T:IntervalSetElement](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), false, true))
+  def above[T:Element](value:T) = IntervalSet[T](false, IntervalTrie.Leaf(toPrefix(value), false, true))
 
-  def one[T:IntervalSetElement] = constant[T](true)
+  def one[T:Element] = constant[T](true)
 
-  def hole[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), true, false))
+  def hole[T:Element](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), true, false))
 
-  def below[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), true, true))
+  def below[T:Element](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), true, true))
 
-  def atOrBelow[T:IntervalSetElement](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), false, true))
+  def atOrBelow[T:Element](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), false, true))
 
-  def apply[T:IntervalSetElement](interval:Interval[T]) : IntervalSet[T] = interval.fold {
+  def apply[T:Element](interval:Interval[T]) : IntervalSet[T] = interval.fold {
     case (Unbound(), Unbound()) => one[T]
     case (Open(a),   Open(b))   if a == b => zero[T]
     case (Closed(a), Closed(b)) if a == b => point(a)
@@ -215,26 +215,26 @@ object IntervalSet {
 
   private object Below {
 
-    def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, true)
+    def apply[T: Element](value:T) = Leaf(toPrefix(value), true, true)
 
     def unapply(l:Leaf) = if(l.at && l.sign) Some(l.key) else None
   }
 
   private object Above {
 
-    def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), false, true)
+    def apply[T: Element](value:T) = Leaf(toPrefix(value), false, true)
 
     def unapply(l:Leaf) = if(!l.at && l.sign) Some(l.key) else None
   }
 
   private[interval] object Both {
 
-    def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, false)
+    def apply[T: Element](value:T) = Leaf(toPrefix(value), true, false)
 
     def unapply(l:Leaf) = if(l.at && !l.sign) Some(l.key) else None
   }
 
-  private def fromTo[T:IntervalSetElement](a:Leaf, b:Leaf) : IntervalSet[T] = {
+  private def fromTo[T:Element](a:Leaf, b:Leaf) : IntervalSet[T] = {
     IntervalSet[T](false, concat(a, b))
   }
 
@@ -252,24 +252,24 @@ object IntervalSet {
     (zero[Long] /: simpleSets)(_ | _)
   }
 
-  final def foreachInterval[T:IntervalSetElement, U](a0:Boolean, a:IntervalTrie)(f:Interval[T] => U): Unit = {
-    val x = implicitly[IntervalSetElement[T]]
+  final def foreachInterval[T:Element, U](a0:Boolean, a:IntervalTrie)(f:Interval[T] => U): Unit = {
+    val x = implicitly[Element[T]]
     import x._
     def op(b0:Bound[T], a0:Boolean, a:IntervalTrie): Bound[T] = a match {
       case Below(a) =>
         if(a0)
-          f(Interval.fromBounds(b0, Open(fromKey(a))))
-        Closed(fromKey(a))
+          f(Interval.fromBounds(b0, Open(fromLong(a))))
+        Closed(fromLong(a))
       case Above(a) =>
         if(a0)
-          f(Interval.fromBounds(b0, Closed(fromKey(a))))
-        Open(fromKey(a))
+          f(Interval.fromBounds(b0, Closed(fromLong(a))))
+        Open(fromLong(a))
       case Both(a) =>
         if(a0)
-          f(Interval.fromBounds(b0, Open(fromKey(a))))
+          f(Interval.fromBounds(b0, Open(fromLong(a))))
         else
-          f(Interval.point(fromKey(a)))
-        Open(fromKey(a))
+          f(Interval.point(fromLong(a)))
+        Open(fromLong(a))
       case a:Branch =>
         val am = a0 ^ a.left.sign
         val bm = op(b0, a0, a.left)
@@ -284,10 +284,10 @@ object IntervalSet {
   }
 
 
-  private def apply[T:IntervalSetElement](below:Boolean, tree:IntervalTrie): IntervalSet[T] =
-    TreeBasedIntervalSet(below, tree, implicitly[IntervalSetElement[T]])
+  private def apply[T:Element](below:Boolean, tree:IntervalTrie): IntervalSet[T] =
+    TreeBasedIntervalSet(below, tree, implicitly[Element[T]])
 
-  private final case class TreeBasedIntervalSet[T](belowAll:Boolean, tree:IntervalTrie, implicit val ise:IntervalSetElement[T]) extends IntervalSet[T] { lhs =>
+  private final case class TreeBasedIntervalSet[T](belowAll:Boolean, tree:IntervalTrie, implicit val ise:Element[T]) extends IntervalSet[T] { lhs =>
 
     import IntervalTrie._
 
@@ -315,16 +315,16 @@ object IntervalSet {
       @tailrec
       def lowerBound(a:IntervalTrie) : Bound[T] = a match {
         case a:Branch => lowerBound(a.left)
-        case Above(x) => Open(ise.fromKey(x))
-        case Below(x) => Closed(ise.fromKey(x))
-        case Both(x) => Closed(ise.fromKey(x))
+        case Above(x) => Open(ise.fromLong(x))
+        case Below(x) => Closed(ise.fromLong(x))
+        case Both(x) => Closed(ise.fromLong(x))
       }
       @tailrec
       def upperBound(a:IntervalTrie) : Bound[T] = a match {
         case a:Branch => upperBound(a.right)
-        case Above(x) => Closed(ise.fromKey(x))
-        case Below(x) => Open(ise.fromKey(x))
-        case Both(x) => Closed(ise.fromKey(x))
+        case Above(x) => Closed(ise.fromLong(x))
+        case Below(x) => Open(ise.fromLong(x))
+        case Both(x) => Closed(ise.fromLong(x))
       }
       if(isEmpty) {
         Interval.empty[T]
@@ -335,11 +335,11 @@ object IntervalSet {
       }
     }
 
-    def below(value:T) : Boolean = SampleBelow(belowAll, tree, toPrefix(ise.toKey(value)))
+    def below(value:T) : Boolean = SampleBelow(belowAll, tree, toPrefix(ise.toLong(value)))
 
-    def at(value:T) : Boolean = SampleAt(belowAll, tree, toPrefix(ise.toKey(value)))
+    def at(value:T) : Boolean = SampleAt(belowAll, tree, toPrefix(ise.toLong(value)))
 
-    def above(value:T) : Boolean = SampleAbove(belowAll, tree, toPrefix(ise.toKey(value)))
+    def above(value:T) : Boolean = SampleAbove(belowAll, tree, toPrefix(ise.toLong(value)))
 
     def apply(value:T) : Boolean = at(value)
 
@@ -368,12 +368,12 @@ object IntervalSet {
     }
 
     def edges = new AbstractTraversable[T] {
-      override def foreach[U](f: T => U): Unit = IntervalTrie.foreachEdge(tree)(key => f(ise.fromKey(key)))
+      override def foreach[U](f: T => U): Unit = IntervalTrie.foreachEdge(tree)(key => f(ise.fromLong(key)))
     }
 
     override def toString = {
       import ise.ops
-      if ((tree eq null) && !belowAll)
+      if (isEmpty)
         Interval.empty[T].toString
       else
         intervals.map(_.toString).mkString(";")

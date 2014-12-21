@@ -5,9 +5,7 @@ import org.scalacheck.Prop._
 import spire.syntax.all._
 import spire.std.any._
 
-object IntervalTrieSampleCheck extends Properties("TreeValueSet2.Sample") {
-
-  import IntervalSetAlgebra.booleanAlgebra
+object IntervalTrieSampleCheck extends Properties("IntervalSet.Sample") {
 
   // this will resolve to the Arbitrary instance for Boolean from scalacheck
   implicit def arb = IntervalSetArbitrary.arbitrary
