@@ -3,6 +3,7 @@ package com.rklaehn.interval
 import org.scalacheck.Properties
 import org.scalacheck.Prop._
 import spire.syntax.all._
+import spire.math.Interval
 import spire.std.any._
 
 object IntervalTrieSampleProperties extends Properties("TreeValueSet2.Sample") {
@@ -61,22 +62,22 @@ object IntervalTrieSampleProperties extends Properties("TreeValueSet2.Sample") {
     binarySampleTest(a, b, a ^ b, _ ^ _)
   }
 
-  /*
-  property("equality") = forAll { a: IntervalTrie =>
-    ~a === negate(a)
-  }
-  */
-
   property("toStringParse") = forAll { a: IntervalSet[Long] =>
-    val atext = a.toString
-    val b = IntervalSet(atext)
-    val btext = b.toString
-    if(a!=b)
-      println(s"$atext $btext")
+    val aText = a.toString
+    val b = IntervalSet(aText)
     a == b
   }
 
   property("isContiguous") = forAll { a: IntervalSet[Long] =>
     a.isContiguous == (a.intervals.size <= 1)
   }
+
+  property("hull") = forAll { a: IntervalSet[Long] =>
+    val hullSet = IntervalSet(a.hull)
+    val outside = ~hullSet
+    val nothingOutside = (a & outside) == IntervalSet.zero[Long]
+    val allInside = a.intervals.forall(i => hullSet.isSupersetOf(IntervalSet(i)))
+    nothingOutside & allInside
+  }
+
 }

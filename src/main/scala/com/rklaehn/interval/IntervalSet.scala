@@ -5,11 +5,14 @@ import spire.algebra.{AdditiveMonoid, Order}
 import spire.math.Interval.{Bound, Closed, Open, Unbound}
 import spire.math.{UInt, ULong, Rational, Interval}
 
+import scala.annotation.tailrec
 import scala.collection.AbstractTraversable
 
 sealed abstract class IntervalSet[T] extends (T => Boolean) {
 
   def isContiguous : Boolean
+
+  def hull: Interval[T]
 
   def below(value:T) : Boolean
 
@@ -57,6 +60,31 @@ object IntervalSet {
         case Branch(_,_,a:Leaf, b:Leaf) => a.sign & b.sign
         case null => true
         case _ => false
+      }
+    }
+
+    def hull: Interval[T] = {
+      implicit val ops = ise.ops
+      @tailrec
+      def lowerBound(a:IntervalTrie) : Bound[T] = a match {
+        case a:Branch => lowerBound(a.left)
+        case Above(x) => Open(ise.fromKey(x))
+        case Below(x) => Closed(ise.fromKey(x))
+        case Both(x) => Closed(ise.fromKey(x))
+      }
+      @tailrec
+      def upperBound(a:IntervalTrie) : Bound[T] = a match {
+        case a:Branch => upperBound(a.right)
+        case Above(x) => Closed(ise.fromKey(x))
+        case Below(x) => Open(ise.fromKey(x))
+        case Both(x) => Closed(ise.fromKey(x))
+      }
+      if(tree eq null) {
+        if (below) Interval.all[T] else Interval.empty[T]
+      } else {
+        val lower = if(below) Unbound[T] else lowerBound(tree)
+        val upper = if(below ^ tree.sign) Unbound[T] else upperBound(tree)
+        Interval.fromBounds(lower, upper)
       }
     }
 

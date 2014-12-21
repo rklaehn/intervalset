@@ -10,6 +10,17 @@ class IntervalSetTest {
 
   import IntervalSet._
 
+//  @Test
+//  def testIntervalUnion() : Unit = {
+//    val a = Interval("[14, 44)")
+//    val b = Interval("(76, ∞)")
+//    val r1 = Interval("[14, ∞)")
+//    val r2 = a union b
+//    println(r1)
+//    println(r2)
+//    require(r1 == r2)
+//  }
+
   @Test
   def leafOperationTest(): Unit = {
     val a = above(1L)
