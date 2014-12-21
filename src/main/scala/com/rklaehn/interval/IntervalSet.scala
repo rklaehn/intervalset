@@ -1,9 +1,8 @@
 package com.rklaehn.interval
 
-import com.rklaehn.interval.IntervalTrie.Leaf
-import spire.math.Interval.{Closed, Open, Unbound}
+import spire.algebra.{AdditiveMonoid, Order}
+import spire.math.Interval.{Bound, Closed, Open, Unbound}
 import spire.math.{Rational, Interval}
-import spire.std.long._
 
 import scala.collection.AbstractTraversable
 import com.rklaehn.interval.IntervalSet.IntervalSetElement
@@ -11,6 +10,7 @@ import com.rklaehn.interval.IntervalSet.IntervalSetElement
 final case class IntervalSet[T] private[interval] (below:Boolean, tree:IntervalTrie)(implicit t:IntervalSetElement[T]) extends (T => Boolean) { lhs =>
 
   import IntervalTrie._
+  import IntervalSet._
 
   private[interval] def ise = implicitly[IntervalSetElement[T]]
 
@@ -39,24 +39,28 @@ final case class IntervalSet[T] private[interval] (below:Boolean, tree:IntervalT
 
   def isProperSupersetOf(rhs:IntervalSet[T]) = isSupersetOf(rhs) && (rhs != lhs)
 
-  def intervals = new AbstractTraversable[Interval[Long]] {
-    override def foreach[U](f: Interval[Long] => U): Unit = IntervalTrie.foreachInterval(below, tree)(f)
+  def intervals = new AbstractTraversable[Interval[T]] {
+    override def foreach[U](f: Interval[T] => U): Unit = foreachInterval(below, tree)(f)
   }
 
   def edges = new AbstractTraversable[T] {
     override def foreach[U](f: T => U): Unit = IntervalTrie.foreachEdge(tree)(key => f(t.fromKey(key)))
   }
 
-  override def toString =
-    if(isConstant && !below)
-      Interval.empty[Long].toString
+  override def toString = {
+    import t._
+    if (isConstant && !below)
+      Interval.empty[T].toString
     else
       intervals.map(_.toString).mkString(";")
+  }
 }
 
 object IntervalSet {
 
-  trait IntervalSetElement[@specialized(Float, Int, Long, Double) T] extends Any {
+  trait IntervalSetElement[@specialized(Float, Int, Long, Double) T] {
+
+    implicit def ops:Order[T] with AdditiveMonoid[T]
 
     def toKey(value:T) : Long
 
@@ -65,6 +69,8 @@ object IntervalSet {
 
   implicit object IntIntervalSetElement extends IntervalSetElement[Int] {
 
+    def ops = spire.std.int.IntAlgebra
+
     def toKey(value:Int) = value
 
     def fromKey(key:Long) : Int = key.toInt
@@ -72,12 +78,16 @@ object IntervalSet {
 
   implicit object LongIntervalSetElement extends IntervalSetElement[Long] {
 
+    def ops = spire.std.long.LongAlgebra
+
     def toKey(value:Long) = value
 
     def fromKey(key:Long) : Long = key
   }
 
   implicit object FloatIntervalSetElement extends IntervalSetElement[Float] {
+
+    def ops = spire.std.float.FloatAlgebra
 
     def toKey(value:Float): Long = {
       if(value.isNaN)
@@ -98,6 +108,8 @@ object IntervalSet {
   }
 
   implicit object DoubleIntervalSetElement extends IntervalSetElement[Double] {
+
+    def ops = spire.std.double.DoubleAlgebra
 
     def toKey(value:Double): Long = {
       if(value.isNaN)
@@ -163,14 +175,20 @@ object IntervalSet {
 
   object Below {
     def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, true)
+
+    def unapply(l:Leaf) = if(l.at && l.sign) Some(l.key) else None
   }
 
   object Above {
     def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), false, true)
+
+    def unapply(l:Leaf) = if(!l.at && l.sign) Some(l.key) else None
   }
 
   object Both {
     def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, false)
+
+    def unapply(l:Leaf) = if(l.at && !l.sign) Some(l.key) else None
   }
 
   private def fromTo[T:IntervalSetElement](a:Leaf, b:Leaf) : IntervalSet[T] = {
@@ -178,6 +196,7 @@ object IntervalSet {
   }
 
   def parse(text:String) : IntervalSet[Long] = {
+    val la = spire.std.long.LongAlgebra
     def rationalToLong(r:Rational) : Long = {
       if(r>Long.MaxValue || r<Long.MinValue)
         throw new NumberFormatException("Integer number too large")
@@ -185,7 +204,38 @@ object IntervalSet {
         r.toLong
     }
     def intervalToIntervalSet(i:Interval[Long]) : IntervalSet[Long] = apply(i)
-    val intervals = text.split(';').map(Interval.apply).map(_.mapBounds(rationalToLong)).map(intervalToIntervalSet)
+    val intervals = text.split(';').map(Interval.apply).map(_.mapBounds(rationalToLong)(la,la)).map(intervalToIntervalSet)
     (zero[Long] /: intervals)(_ | _)
+  }
+
+  final def foreachInterval[T:IntervalSetElement, U](a0:Boolean, a:IntervalTrie)(f:Interval[T] => U): Unit = {
+    val x = implicitly[IntervalSetElement[T]]
+    import x._
+    def op(b0:Bound[T], a0:Boolean, a:IntervalTrie): Bound[T] = a match {
+      case Below(a) =>
+        if(a0)
+          f(Interval.fromBounds(b0, Open(fromKey(a))))
+        Closed(fromKey(a))
+      case Above(a) =>
+        if(a0)
+          f(Interval.fromBounds(b0, Closed(fromKey(a))))
+        Open(fromKey(a))
+      case Both(a) =>
+        if(a0)
+          f(Interval.fromBounds(b0, Open(fromKey(a))))
+        else
+          f(Interval.point(fromKey(a)))
+        Open(fromKey(a))
+      case a:Branch =>
+        val am = a0 ^ a.sign
+        val bm = op(b0, a0, a.left)
+        val b1 = op(bm, am, a.right)
+        b1
+      case _ =>
+        Unbound()
+    }
+    val last = op(Unbound(), a0, a)
+    if(a0 ^ ((a ne null) && a.sign))
+      f(Interval.fromBounds(last, Unbound()))
   }
 }

@@ -1,10 +1,5 @@
 package com.rklaehn.interval
 
-import spire.math.Interval
-import spire.math.Interval.{Closed, Unbound, Open, Bound}
-
-import scala.annotation.switch
-
 private[interval] object IntervalTrie {
 
   import java.lang.Long.numberOfLeadingZeros
@@ -364,7 +359,7 @@ private[interval] object IntervalTrie {
      */
     def level = -1.toByte
 
-    def above = sign
+    @inline def above = sign
   }
 
   @inline final val Below = 0
@@ -413,36 +408,6 @@ private[interval] object IntervalTrie {
     case leaf:Leaf =>
       f(leaf.key)
     case _ =>
-  }
-
-  final def foreachInterval[U](a0:Boolean, a:IntervalTrie)(f:Interval[Long] => U): Unit = {
-    import spire.std.long._
-    def op(b0:Bound[Long], a0:Boolean, a:IntervalTrie): Bound[Long] = a match {
-      case a: Leaf if a.sign && a.at =>
-        if(a0)
-          f(Interval.fromBounds(b0, Open(a.key)))
-        Closed(a.key)
-      case a: Leaf if a.sign && a.above =>
-        if(a0)
-          f(Interval.fromBounds(b0, Closed(a.key)))
-        Open(a.key)
-      case a:Leaf if !a.sign && a.at =>
-        if(a0)
-          f(Interval.fromBounds(b0, Open(a.key)))
-        else
-          f(Interval.point(a.key))
-        Open(a.key)
-      case a:Branch =>
-        val am = a0 ^ a.sign
-        val bm = op(b0, a0, a.left)
-        val b1 = op(bm, am, a.right)
-        b1
-      case _ =>
-        Unbound()
-    }
-    val last = op(Unbound(), a0, a)
-    if(a0 ^ ((a ne null) && a.sign))
-      f(Interval.fromBounds(last, Unbound()))
   }
 }
 
