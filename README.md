@@ -122,3 +122,9 @@ Benchmark for a ^ b (300 calls in 6.302 s)
 As expected, negate is almost unmeasurably fast. It just creates a copy of the root node with a flag flipped. 
 Xor is slightly slower than and/or, which is to be expected since the resulting profile is more complex
 There is a significant (~factor 100) benefit in the case where subtrees can be reused, even in the case of xor.
+
+Obviously, the benchmark data is specific to my computer. To run the benchmark yourself, use
+```
+sbt test:run
+```
+and choose the benchmark.
