@@ -3,10 +3,9 @@ package com.rklaehn.interval
 import org.scalacheck.Properties
 import org.scalacheck.Prop._
 import spire.syntax.all._
-import spire.math.Interval
 import spire.std.any._
 
-object IntervalTrieSampleProperties extends Properties("TreeValueSet2.Sample") {
+object IntervalTrieSampleCheck extends Properties("TreeValueSet2.Sample") {
 
   import IntervalSetAlgebra.booleanAlgebra
 
