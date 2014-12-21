@@ -252,7 +252,7 @@ object IntervalSet {
     (zero[Long] /: simpleSets)(_ | _)
   }
 
-  final def foreachInterval[T:Element, U](a0:Boolean, a:IntervalTrie)(f:Interval[T] => U): Unit = {
+  private final def foreachInterval[T:Element, U](a0:Boolean, a:IntervalTrie)(f:Interval[T] => U): Unit = {
     val x = implicitly[Element[T]]
     import x._
     def op(b0:Bound[T], a0:Boolean, a:IntervalTrie): Bound[T] = a match {
