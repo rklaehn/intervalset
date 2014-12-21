@@ -10,7 +10,7 @@ Boundaries are either inclusive or exclusive, so (0..2] is different to [1..2]. 
 
 Supported fundamental operations are union, intersection, negation. There is a zero element (the empty interval set) and a one element (the interval set containing all long integers). So it is possible to define a [boolean algebra](https://github.com/non/spire/blob/a0211697d993cade7c3618076ae997f84a6b5f3c/core/src/main/scala/spire/algebra/Bool.scala) for intervals. This is used in property-based testing using scalacheck.
 
-There are typeclass instances to make the data structure seamlessly usable with all primitive types except for char and boolean, as well as the unsigned value classes UByte, UShort, UInt and ULong from Spire.
+There are typeclass instances to make the data structure seamlessly usable with all primitive types except for char and boolean, as well as the unsigned value classes UByte, UShort, UInt and ULong from Spire. You can easily provide your own instance for any key type that can be converted to a signed long while preserving order.
 
 ## Usage
 
