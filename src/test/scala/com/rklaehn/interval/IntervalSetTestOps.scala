@@ -1,10 +1,10 @@
-package scala.collection.immutable
+package com.rklaehn.interval
 
 /**
  * Operations that are just useful for testing
  */
-private[immutable] object IntervalSetTestOps {
-  import scala.collection.immutable.IntervalTrie._
+private[interval] object IntervalSetTestOps {
+  import com.rklaehn.interval.IntervalTrie._
 
   private def foreachKey[T, U](tree:IntervalTrie, toKey:Long => T, f : T => U) : Unit = tree match {
     case branch:Branch =>

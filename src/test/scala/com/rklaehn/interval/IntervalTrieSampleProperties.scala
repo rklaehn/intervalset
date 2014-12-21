@@ -1,4 +1,4 @@
-package scala.collection.immutable
+package com.rklaehn.interval
 
 import org.scalacheck.Properties
 import org.scalacheck.Prop._

@@ -1,4 +1,4 @@
-package scala.collection.immutable
+package com.rklaehn.interval
 
 import spire.math.Interval
 import spire.math.Interval.{Closed, Unbound, Open, Bound}
@@ -6,7 +6,7 @@ import spire.math.Interval.{Closed, Unbound, Open, Bound}
 import scala.annotation.switch
 import scala.util.hashing.MurmurHash3
 
-private[immutable] object IntervalTrie {
+private[interval] object IntervalTrie {
 
   import java.lang.Long.numberOfLeadingZeros
 
@@ -463,7 +463,7 @@ private[immutable] object IntervalTrie {
   }
 }
 
-private[immutable] sealed abstract class IntervalTrie {
+private[interval] sealed abstract class IntervalTrie {
 
   def prefix : Long
 

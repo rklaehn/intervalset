@@ -1,17 +1,17 @@
-package scala.collection.immutable
+package com.rklaehn.interval
 
 import spire.math.Interval.{Closed, Open, Unbound}
 import spire.math.{Rational, Interval}
 import spire.std.long._
 
 import scala.collection.AbstractTraversable
-import scala.collection.immutable.IntervalSet.IntervalSetElement
+import com.rklaehn.interval.IntervalSet.IntervalSetElement
 
-final case class IntervalSet[T] private[immutable] (below:Boolean, tree:IntervalTrie)(implicit t:IntervalSetElement[T]) extends (T => Boolean) { lhs =>
+final case class IntervalSet[T] private[interval] (below:Boolean, tree:IntervalTrie)(implicit t:IntervalSetElement[T]) extends (T => Boolean) { lhs =>
 
   import IntervalTrie._
 
-  private[immutable] def ise = implicitly[IntervalSetElement[T]]
+  private[interval] def ise = implicitly[IntervalSetElement[T]]
 
   def isConstant : Boolean = tree eq null
 

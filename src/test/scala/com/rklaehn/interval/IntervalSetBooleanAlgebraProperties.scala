@@ -1,4 +1,4 @@
-package scala.collection.immutable
+package com.rklaehn.interval
 
 import org.scalacheck.Test.Parameters
 import org.scalacheck.{Prop, Properties, Gen, Arbitrary}
