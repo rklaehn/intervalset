@@ -110,6 +110,20 @@ object IntervalSet {
     }
   }
 
+  implicit object CharElement extends Element[Char] {
+
+    object ops extends spire.std.CharAlgebra with AdditiveMonoid[Char] {
+
+      def zero: Char = 0.toChar
+
+      def plus(x: Char, y: Char): Char = (x.toInt + y.toInt).toChar
+    }
+
+    def toLong(value:Char) = value.toLong
+
+    def fromLong(key:Long): Char = key.toChar
+  }
+
   implicit object DoubleElement extends Element[Double] {
 
     def ops = spire.std.double.DoubleAlgebra

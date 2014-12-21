@@ -72,7 +72,7 @@ class IntervalSetTest {
 
     }
 
-    //Int
+    //Byte
     testEdge(1.toByte)
     testEdge(-1.toByte)
     testInterval(Byte.MinValue, Byte.MaxValue)
@@ -117,6 +117,11 @@ class IntervalSetTest {
     //ULong
     testEdge(ULong(1))
     testInterval(ULong.MinValue, ULong.MaxValue)
+
+    //Char
+    testEdge(Char.MinValue)
+    testEdge(Char.MaxValue)
+    testInterval(Char.MinValue, Char.MaxValue)
   }
 
   @Test(expected = classOf[IllegalArgumentException])
@@ -157,5 +162,12 @@ class IntervalSetTest {
     val a = IntervalSet.above(1L)
     val b = IntervalSet.below(1L)
     assertEquals(a ^ b, algebra.xor(a, b))
+  }
+
+  @Test
+  def charAdditiveMonoidTest(): Unit = {
+    import IntervalSet.CharElement.ops._
+    assertEquals(0, zero.toInt)
+    assertEquals('a', plus('a', zero))
   }
 }
