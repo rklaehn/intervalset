@@ -69,10 +69,14 @@ object IntervalTrieSampleProperties extends Properties("TreeValueSet2.Sample") {
 
   property("toStringParse") = forAll { a: IntervalSet[Long] =>
     val atext = a.toString
-    val b = IntervalSet.parse(atext)
+    val b = IntervalSet(atext)
     val btext = b.toString
     if(a!=b)
       println(s"$atext $btext")
     a == b
+  }
+
+  property("isContiguous") = forAll { a: IntervalSet[Long] =>
+    a.isContiguous == (a.intervals.size <= 1)
   }
 }

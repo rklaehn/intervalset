@@ -25,25 +25,24 @@ private[interval] object IntervalTrie {
   @inline final def hasMatchAt(key: Long, prefix: Long, level: Byte) =
     maskAbove(key, level) == prefix
 
-  def join(t1 : IntervalTrie, t2 : IntervalTrie) : IntervalTrie = {
+  def concat(t1 : Leaf, t2 : Leaf) : IntervalTrie = {
+    if(!unsigned_<(t1.prefix, t2.prefix))
+      throw new IllegalArgumentException("Arguments of concat must be ordered")
     val p1 = t1.prefix
     val p2 = t2.prefix
     val l = levelAbove(p1, p2)
     val p = maskAbove(p1, l)
-    if (zeroAt(p1, l))
-      Branch(p, l, t1, t2)
-    else
-      Branch(p, l, t2, t1)
+    Branch(p, l, t1, t2)
   }
 
-  def join(p1 : Long, t1 : IntervalTrie, p2 : Long, t2 : IntervalTrie) : IntervalTrie = {
-    val l = levelAbove(p1, p2)
-    val p = maskAbove(p1, l)
-    if (zeroAt(p1, l))
-      Branch(p, l, t1, t2)
-    else
-      Branch(p, l, t2, t1)
-  }
+//  def join(p1 : Long, t1 : IntervalTrie, p2 : Long, t2 : IntervalTrie) : IntervalTrie = {
+//    val l = levelAbove(p1, p2)
+//    val p = maskAbove(p1, l)
+//    if (zeroAt(p1, l))
+//      Branch(p, l, t1, t2)
+//    else
+//      Branch(p, l, t2, t1)
+//  }
 
   /**
    * Creates a branch from two possibly null children. In case one of the children is null, the other child will
@@ -62,7 +61,9 @@ private[interval] object IntervalTrie {
     else
       Branch(p,level,l,r)
 
+  // $COVERAGE-OFF$
   private def unreachable : Nothing = throw new NotImplementedError("You should never get here")
+  // $COVERAGE-ON$
 
   /**
    * A binary calculator that preserves the order of operands. This is the most generic case. It is used even for
@@ -158,8 +159,9 @@ private[interval] object IntervalTrie {
               // b fits into the right child of a
               a.lr(overlapA(a0, a.left, b0), op(am, a.right, b0, b))
             }
-          case _ =>
-            unreachable
+          // $COVERAGE-OFF$
+          case _ => unreachable
+          // $COVERAGE-ON$
         }
       } else if (b_l > a_l) {
         // b is larger => b must be a branch
@@ -176,8 +178,9 @@ private[interval] object IntervalTrie {
               // a fits into the right child of b
               b.lr(overlapB(a0, b0, b.left), op(a0, a, bm, b.right))
             }
-          case _ =>
-            unreachable
+          // $COVERAGE-OFF$
+          case _ => unreachable
+          // $COVERAGE-ON$
         }
       } else {
         // a_l == b_l, trees are the same size
@@ -191,8 +194,9 @@ private[interval] object IntervalTrie {
               a.lr(op(a0, a.left, b0, b.left), op(am, a.right, bm, b.right))
             case (a: Leaf, b: Leaf) =>
               collision(a0, a, b0, b)
-            case _ =>
-              unreachable
+            // $COVERAGE-OFF$
+            case _ => unreachable
+            // $COVERAGE-ON$
           }
         } else {
           // same mask, different prefix
@@ -384,15 +388,15 @@ private[interval] object IntervalTrie {
         copy(left = left, right = right)
     }
   }
-
-  final def foreachLeaf[U](a0:Boolean, a:IntervalTrie,f : ((Boolean, Leaf)) =>  U) : Unit = a match {
-    case a:Branch =>
-      foreachLeaf(a0, a.left, f)
-      foreachLeaf(a0 ^ a.sign, a.right, f)
-    case leaf:Leaf =>
-      f((a0,leaf))
-    case _ =>
-  }
+//
+//  final def foreachLeaf[U](a0:Boolean, a:IntervalTrie,f : ((Boolean, Leaf)) =>  U) : Unit = a match {
+//    case a:Branch =>
+//      foreachLeaf(a0, a.left, f)
+//      foreachLeaf(a0 ^ a.sign, a.right, f)
+//    case leaf:Leaf =>
+//      f((a0,leaf))
+//    case _ =>
+//  }
 
   final def foreachEdge[U](a:IntervalTrie)(f : Long =>  U) : Unit = a match {
     case a:Branch =>

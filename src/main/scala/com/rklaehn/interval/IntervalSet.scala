@@ -9,6 +9,8 @@ import scala.collection.AbstractTraversable
 
 sealed abstract class IntervalSet[T] extends (T => Boolean) {
 
+  def isContiguous : Boolean
+
   def below(value:T) : Boolean
 
   def at(value:T) : Boolean
@@ -42,6 +44,21 @@ object IntervalSet {
   private final case class TreeBasedIntervalSet[T](below:Boolean, tree:IntervalTrie, implicit val ise:IntervalSetElement[T]) extends IntervalSet[T] { lhs =>
 
     import IntervalTrie._
+
+    def isContiguous = if(below) {
+      tree match {
+        case a:Leaf => a.sign
+        case null => true
+        case _ => false
+      }
+    } else {
+      tree match {
+        case _:Leaf => true
+        case Branch(_,_,a:Leaf, b:Leaf) => a.sign & b.sign
+        case null => true
+        case _ => false
+      }
+    }
 
     def below(value:T) : Boolean = IntervalTrie.SampleBelow(below, tree, toPrefix(ise.toKey(value)))
 
@@ -141,7 +158,7 @@ object IntervalSet {
       if(value.isNaN)
         throw new IllegalArgumentException("NaN")
       // sign and magnitude signed integer
-      val signAndMagnitude = java.lang.Double.doubleToLongBits(value)
+      val signAndMagnitude = java.lang.Float.floatToIntBits(value)
       // two's complement signed integer: if the sign bit is set, negate everything except the sign bit
       val twosComplement = if(signAndMagnitude>=0) signAndMagnitude else (-signAndMagnitude | (1L<<63))
       twosComplement
@@ -181,7 +198,7 @@ object IntervalSet {
 
   private implicit def tIsLong[T](value:T)(implicit tl:IntervalSetElement[T]) = tl.toKey(value)
 
-  def fromKind[T:IntervalSetElement](value:T, kind:Int) = {
+  private[interval] def fromKind[T:IntervalSetElement](value:T, kind:Int) = {
     val bound = kind match {
       case 0 => Below(value)
       case 1 => Above(value)
@@ -222,21 +239,21 @@ object IntervalSet {
     case (Open(a),   Open(b))   => fromTo(Above(a), Below(b))
   }
 
-  object Below {
+  private object Below {
 
     def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, true)
 
     def unapply(l:Leaf) = if(l.at && l.sign) Some(l.key) else None
   }
 
-  object Above {
+  private object Above {
 
     def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), false, true)
 
     def unapply(l:Leaf) = if(!l.at && l.sign) Some(l.key) else None
   }
 
-  object Both {
+  private[interval] object Both {
 
     def apply[T: IntervalSetElement](value:T) = Leaf(toPrefix(value), true, false)
 
@@ -244,10 +261,10 @@ object IntervalSet {
   }
 
   private def fromTo[T:IntervalSetElement](a:Leaf, b:Leaf) : IntervalSet[T] = {
-    IntervalSet[T](false, join(a, b))
+    IntervalSet[T](false, concat(a, b))
   }
 
-  def parse(text:String) : IntervalSet[Long] = {
+  def apply(text:String) : IntervalSet[Long] = {
     val la = spire.std.long.LongAlgebra
     def rationalToLong(r:Rational) : Long = {
       if(r>Long.MaxValue || r<Long.MinValue)

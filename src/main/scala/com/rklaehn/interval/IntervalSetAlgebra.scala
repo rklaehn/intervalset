@@ -22,19 +22,19 @@ object IntervalSetAlgebra {
     override def xor(a: IntervalSet[T], b: IntervalSet[T]) = a ^ b
   }
 
-  implicit def ordering[T:IntervalSetElement]: PartialOrdering[IntervalSet[T]] = new PartialOrdering[IntervalSet[T]] {
-
-    override def tryCompare(x: IntervalSet[T], y: IntervalSet[T]): Option[Int] = {
-      if(x == y)
-        Some(0)
-      else if(x.isSupersetOf(y))
-        Some(1)
-      else if(y.isSupersetOf(x))
-        Some(-1)
-      else
-        None
-    }
-
-    override def lteq(x: IntervalSet[T], y: IntervalSet[T]): Boolean = y.isProperSupersetOf(x)
-  }
+//  implicit def ordering[T:IntervalSetElement]: PartialOrdering[IntervalSet[T]] = new PartialOrdering[IntervalSet[T]] {
+//
+//    override def tryCompare(x: IntervalSet[T], y: IntervalSet[T]): Option[Int] = {
+//      if(x == y)
+//        Some(0)
+//      else if(x.isSupersetOf(y))
+//        Some(1)
+//      else if(y.isSupersetOf(x))
+//        Some(-1)
+//      else
+//        None
+//    }
+//
+//    override def lteq(x: IntervalSet[T], y: IntervalSet[T]): Boolean = y.isProperSupersetOf(x)
+//  }
 }

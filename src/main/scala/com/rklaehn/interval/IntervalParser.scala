@@ -2,6 +2,7 @@ package com.rklaehn.interval
 import spire.math.{Rational, Interval}
 import spire.math.Interval._
 
+// $COVERAGE-OFF$
 private object IntervalParser {
 
   private val NullRe = "^ *\\( *Ø *\\) *$".r
