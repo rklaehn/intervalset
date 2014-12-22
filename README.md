@@ -12,7 +12,7 @@ Supported fundamental operations are union, intersection, negation. There is a z
 
 It is also possible to define a partial ordering of interval sets, but this is not done yet. However, the operations isSupersetOf and isProperSupersetOf are available.
 
-There are typeclass instances to make the data structure seamlessly usable with all primitive types except for char and boolean, as well as the unsigned value classes UByte, UShort, UInt and ULong from Spire. You can easily provide your own instance for any key type that can be converted to a signed long while preserving order.
+There are typeclass instances to make the data structure seamlessly usable with all primitive types except for Boolean, as well as the unsigned value classes UByte, UShort, UInt and ULong from Spire. You can easily provide your own instance for any key type that can be converted to a signed long while preserving order.
 
 ## Usage
 
