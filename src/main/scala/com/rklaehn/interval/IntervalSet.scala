@@ -2,7 +2,7 @@ package com.rklaehn.interval
 
 import language.implicitConversions
 import spire.algebra.{AdditiveMonoid, Order}
-import spire.math.Interval.{Bound, Closed, Open, Unbound}
+import spire.math.interval._
 import spire.math._
 
 import scala.annotation.tailrec
@@ -214,17 +214,17 @@ object IntervalSet {
   def atOrBelow[T:Element](value:T) = IntervalSet[T](true, IntervalTrie.Leaf(toPrefix(value), false, true))
 
   def apply[T:Element](interval:Interval[T]) : IntervalSet[T] = interval.fold {
-    case (Unbound(), Unbound()) => one[T]
-    case (Open(a),   Open(b))   if a == b => zero[T]
-    case (Closed(a), Closed(b)) if a == b => point(a)
-    case (Unbound(), Open(x))   => below(x)
-    case (Unbound(), Closed(x)) => atOrBelow(x)
-    case (Open(x),   Unbound()) => above(x)
-    case (Closed(x), Unbound()) => atOrAbove(x)
-    case (Closed(a), Closed(b)) => fromTo(Below(a), Above(b))
-    case (Closed(a), Open(b))   => fromTo(Below(a), Below(b))
-    case (Open(a),   Closed(b)) => fromTo(Above(a), Above(b))
-    case (Open(a),   Open(b))   => fromTo(Above(a), Below(b))
+    case (Closed(a),    Closed(b)) if a == b => point(a)
+    case (Unbound(),    Open(x))      => below(x)
+    case (Unbound(),    Closed(x))    => atOrBelow(x)
+    case (Open(x),      Unbound())    => above(x)
+    case (Closed(x),    Unbound())    => atOrAbove(x)
+    case (Closed(a),    Closed(b))    => fromTo(Below(a), Above(b))
+    case (Closed(a),    Open(b))      => fromTo(Below(a), Below(b))
+    case (Open(a),      Closed(b))    => fromTo(Above(a), Above(b))
+    case (Open(a),      Open(b))      => fromTo(Above(a), Below(b))
+    case (Unbound(),    Unbound())    => one[T]
+    case (EmptyBound(), EmptyBound()) => zero[T]
   }
 
   private object Below {
@@ -261,7 +261,7 @@ object IntervalSet {
         r.toLong
     }
     def intervalToIntervalSet(i:Interval[Long]) : IntervalSet[Long] = apply(i)
-    val intervals = text.split(';').map(IntervalParser.apply).map(_.mapBounds(rationalToLong)(la,la))
+    val intervals = text.split(';').map(Interval.apply).map(_.mapBounds(rationalToLong)(la))
     val simpleSets = intervals.map(intervalToIntervalSet)
     (zero[Long] /: simpleSets)(_ | _)
   }

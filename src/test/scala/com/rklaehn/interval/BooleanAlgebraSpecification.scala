@@ -2,8 +2,8 @@ package com.rklaehn.interval
 
 import org.scalacheck.Prop._
 import org.scalacheck.{Arbitrary, Properties}
-import spire.algebra.{BooleanAlgebra, Eq}
-import spire.syntax.booleanAlgebra._
+import spire.algebra.{Bool, Eq}
+import spire.syntax.bool._
 import spire.syntax.eq._
 
 /**
@@ -13,7 +13,7 @@ import spire.syntax.eq._
  */
 abstract class BooleanAlgebraSpecification[A](name:String) extends Properties(name) {
 
-  implicit def algebra : BooleanAlgebra[A]
+  implicit def algebra : Bool[A]
 
   implicit def eq : Eq[A]
 

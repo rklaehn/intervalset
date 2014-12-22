@@ -6,7 +6,7 @@ scalaVersion := "2.11.4"
 
 version := "0.1-SNAPSHOT"
 
-libraryDependencies += "org.spire-math" %% "spire" % "0.8.2"
+libraryDependencies += "org.spire-math" %% "spire" % "0.9.0"
 
 libraryDependencies += "org.spire-math" %% "spire-scalacheck-binding" % "0.8.2" % "test"
 

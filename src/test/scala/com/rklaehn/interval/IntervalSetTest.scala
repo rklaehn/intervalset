@@ -3,7 +3,7 @@ package com.rklaehn.interval
 import org.junit.Assert._
 import org.junit.Test
 import spire.algebra.Order
-import spire.math.Interval.Closed
+import spire.math.interval.Closed
 import spire.math._
 
 class IntervalSetTest {
