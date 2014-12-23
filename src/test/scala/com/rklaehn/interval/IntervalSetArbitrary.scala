@@ -26,7 +26,8 @@ object IntervalSetArbitrary {
   private def randomProfileGen(size:Int) = Gen.frequency[IntervalSet[Long]](
     1 -> IntervalSet.zero[Long],
     1 -> IntervalSet.one[Long],
-    30 -> randomProfileXor(0, 100, size)
+    15 -> randomProfileXor(0, 100, size),
+    15 -> randomProfileXor(Long.MinValue, Long.MaxValue, size)
   )
 
   val arbitrary = Arbitrary[IntervalSet[Long]](randomProfileGen(3))

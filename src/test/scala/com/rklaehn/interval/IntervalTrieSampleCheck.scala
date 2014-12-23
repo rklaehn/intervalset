@@ -94,4 +94,11 @@ object IntervalTrieSampleCheck extends Properties("IntervalSet.Sample") {
     val r2 = (a & b) == b
     r1 == r2
   }
+
+  property("isSupersetOf") = forAll { (a: IntervalSet[Long], x: Long) =>
+    val b = a & IntervalSet.below(x)
+    val r1 = a isSupersetOf b
+    val r2 = (a & b) == b
+    r1 == r2
+  }
 }
