@@ -65,12 +65,146 @@ private[interval] object IntervalTrie {
   private def unreachable : Nothing = throw new NotImplementedError("You should never get here")
   // $COVERAGE-ON$
 
+  sealed abstract class BooleanBinaryOperator {
+
+    @inline private final def disjoint(a0:Boolean, a: IntervalTrie, b0:Boolean, b: IntervalTrie): Boolean = {
+      val a_p = a.prefix
+      val b_p = b.prefix
+      val level = levelAbove(a_p, b_p)
+      if (zeroAt(a_p, level)) {
+        // a is before b, so it is overlapped by b0
+        // b is behind a, so it is overlapped by a0 ^ a.sign
+        overlapA(a0, a, b0) && overlapB(a0 ^ a.sign, b0, b)
+      } else {
+        // b is before a, so it is overlapped by a0
+        // a is behind b, so it is overlapped by b0 ^ b.sign
+        overlapB(a0, b0, b) && overlapA(a0, a, b0 ^ b.sign)
+      }
+    }
+
+    protected def op(a:Boolean, b:Boolean) : Boolean
+
+    /**
+     * This is called if two leaves collide (have the same prefix)
+     * @param a0 the value before a
+     * @param a a leaf from the lhs
+     * @param b0 the value before b
+     * @param b a leaf from the rhs
+     * @return the result. Can be a leaf or null
+     */
+    protected def collision(a0:Boolean, a:Leaf, b0:Boolean,b:Leaf) : Boolean
+
+    /**
+     * This will be called when a is completely covered by a contiguous interval of b
+     * @param a0
+     * @param a a non-null tree (leaf or branch)
+     * @param b0 the constant value of b in the complete interval of a
+     * @return the result, can be null
+     */
+    protected def overlapA(a0: Boolean, a:IntervalTrie, b0:Boolean) : Boolean
+
+    /**
+     * This will be called when b is completely covered by a contiguous interval of a
+     * @param a0 the constant value of a in the complete interval of b
+     * @param b0
+     * @param b a non-null tree (leaf or branch)
+     * @return the result, can be null
+     */
+    protected def overlapB(a0:Boolean, b0:Boolean, b:IntervalTrie) : Boolean
+
+    /**
+     * Performs the binary operation for two arbitrary trees
+     * @param a0 the value before a
+     * @param a a node (leaf or branch) from the lhs
+     * @param b0 the value before b
+     * @param b a node (leaf or branch) from the rhs
+     * @return the result, can be null
+     */
+    private final def op(a0:Boolean, a: IntervalTrie, b0:Boolean, b: IntervalTrie): Boolean = {
+      val a_l = a.level
+      val a_p = a.prefix
+      val b_l = b.level
+      val b_p = b.prefix
+
+      if (a_l > b_l) {
+        // a is larger => a must be a branch
+        if (!hasMatchAt(b_p, a_p, a_l)) {
+          // the prefix of a and b is different. We don't care if a is a branch or a leaf
+          disjoint(a0, a, b0, b)
+        } else a match {
+          case a: Branch =>
+            val am = a0 ^ a.left.sign
+            if (zeroAt(b_p, a_l)) {
+              // b fits into the left child of a
+              op(a0, a.left, b0, b) && overlapA(am, a.right, b0 ^ b.sign)
+            } else {
+              // b fits into the right child of a
+              overlapA(a0, a.left, b0) && op(am, a.right, b0, b)
+            }
+          // $COVERAGE-OFF$
+          case _ => unreachable
+          // $COVERAGE-ON$
+        }
+      } else if (b_l > a_l) {
+        // b is larger => b must be a branch
+        if (!hasMatchAt(a_p, b_p, b_l)) {
+          // the prefix of a and b is different. We don't care if b is a branch or a leaf
+          disjoint(a0, a, b0, b)
+        } else b match {
+          case b: Branch =>
+            val bm = b0 ^ b.left.sign
+            if (zeroAt(a_p, b_l)) {
+              // a fits into the left child of b
+              op(a0, a, b0, b.left) && overlapB(a0 ^ a.sign, bm, b.right)
+            } else {
+              // a fits into the right child of b
+              overlapB(a0, b0, b.left) && op(a0, a, bm, b.right)
+            }
+          // $COVERAGE-OFF$
+          case _ => unreachable
+          // $COVERAGE-ON$
+        }
+      } else {
+        // a_l == b_l, trees are the same size
+        if (a_p == b_p) {
+          (a, b) match {
+            case (a: Branch, b: Branch) =>
+              val am = a0 ^ a.left.sign
+              val bm = b0 ^ b.left.sign
+              // same prefix. leaves have to be merged
+              // todo: check if we can return b unchanged
+              op(a0, a.left, b0, b.left) && op(am, a.right, bm, b.right)
+            case (a: Leaf, b: Leaf) =>
+              collision(a0, a, b0, b)
+            // $COVERAGE-OFF$
+            case _ => unreachable
+            // $COVERAGE-ON$
+          }
+        } else {
+          // same mask, different prefix
+          disjoint(a0, a, b0, b)
+        }
+      }
+    }
+
+    final def apply(a0: Boolean, a: IntervalTrie, b0: Boolean, b: IntervalTrie) : Boolean = op(a0, b0) &&  {
+      if ((a eq null) && (b eq null))
+        true
+      else if (a eq null)
+        overlapB(a0, b0, b)
+      else if (b eq null)
+        overlapA(a0, a, b0)
+      else
+        op(a0, a, b0, b)
+    }
+  }
+
   /**
    * A binary calculator that preserves the order of operands. This is the most generic case. It is used even for
    * symmetric operations. There might be some performance benefit in doing an operator for symmetric operations, but
    * I doubt that it is worth it. And in any case I am too lazy right now.
    */
-  abstract class OrderedBinaryOperator {
+  sealed abstract class OrderedBinaryOperator {
 
     /**
      * Joins two non-overlapping leaves
@@ -214,6 +348,36 @@ private[interval] object IntervalTrie {
         overlapA(a0, a, b0)
       else
         op(a0, a, b0, b)
+    }
+  }
+
+  object DisjointCalculator extends BooleanBinaryOperator {
+
+    override protected def op(a: Boolean, b: Boolean): Boolean = !(a & b)
+
+    override protected def overlapB(a0: Boolean, b0: Boolean, b: IntervalTrie): Boolean = !a0
+
+    override protected def overlapA(a0: Boolean, a: IntervalTrie, b0: Boolean): Boolean = !b0
+
+    override protected def collision(a0: Boolean, a: Leaf, b0: Boolean, b: Leaf): Boolean = {
+      val at1 = !((a.at ^ a0) & (b.at ^ b0))
+      val above1 = !((a.above ^ a0) & (b.above ^ b0))
+      at1 && above1
+    }
+  }
+
+  object SupersetOfCalculator extends BooleanBinaryOperator {
+
+    override protected def op(a: Boolean, b: Boolean): Boolean = a | !b
+
+    override protected def overlapB(a0: Boolean, b0: Boolean, b: IntervalTrie): Boolean = a0
+
+    override protected def overlapA(a0: Boolean, a: IntervalTrie, b0: Boolean): Boolean = !b0
+
+    override protected def collision(a0: Boolean, a: Leaf, b0: Boolean, b: Leaf): Boolean = {
+      val at1 = (a.at ^ a0) | !(b.at ^ b0)
+      val above1 = (a.above ^ a0) | !(b.above ^ b0)
+      at1 && above1
     }
   }
 

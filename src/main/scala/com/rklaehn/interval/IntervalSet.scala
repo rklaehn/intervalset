@@ -34,7 +34,9 @@ sealed abstract class IntervalSet[T] extends (T => Boolean) {
 
   def intervals: Traversable[Interval[T]]
 
-  def isSupersetOf(rhs:IntervalSet[T]):Boolean
+  def intersects(rhs:IntervalSet[T]): Boolean
+
+  def isSupersetOf(rhs:IntervalSet[T]): Boolean
 
   def isProperSupersetOf(rhs:IntervalSet[T]): Boolean
 
@@ -372,7 +374,15 @@ object IntervalSet {
 
     def unary_~ = IntervalSet[T](!belowAll, tree)
 
-    def isSupersetOf(rhs:IntervalSet[T]) = (lhs | rhs) == lhs
+    def isSupersetOf(rhs:IntervalSet[T]) = rhs match {
+      case rhs:TreeBasedIntervalSet[T] =>
+        SupersetOfCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree)
+    }
+
+    def intersects(rhs:IntervalSet[T]) = rhs match {
+      case rhs:TreeBasedIntervalSet[T] =>
+        !DisjointCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree)
+    }
 
     def isProperSupersetOf(rhs:IntervalSet[T]) = isSupersetOf(rhs) && (rhs != lhs)
 

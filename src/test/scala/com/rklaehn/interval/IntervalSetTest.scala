@@ -69,7 +69,6 @@ class IntervalSetTest {
       val intervalSet = IntervalSet(interval)
       assertEquals(IndexedSeq(min,max), intervalSet.edges.toIndexedSeq)
       assertEquals(interval.toString, intervalSet.toString)
-
     }
 
     //Byte
