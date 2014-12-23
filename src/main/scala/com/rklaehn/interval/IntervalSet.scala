@@ -114,7 +114,7 @@ object IntervalSet {
 
   implicit object CharElement extends Element[Char] {
 
-    object ops extends spire.std.CharAlgebra with AdditiveMonoid[Char] {
+    val ops: Order[Char] with AdditiveMonoid[Char] = new spire.std.CharAlgebra with AdditiveMonoid[Char] {
 
       def zero: Char = 0.toChar
 
