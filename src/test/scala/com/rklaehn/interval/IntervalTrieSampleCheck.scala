@@ -96,9 +96,13 @@ object IntervalTrieSampleCheck extends Properties("IntervalSet.Sample") {
   }
 
   property("isSupersetOf") = forAll { (a: IntervalSet[Long], x: Long) =>
-    val b = a & IntervalSet.below(x)
-    val r1 = a isSupersetOf b
-    val r2 = (a & b) == b
-    r1 == r2
+    val b = a & IntervalSet.atOrAbove(x)
+    a isSupersetOf b
+  }
+
+  property("disjoint") = forAll { (s: IntervalSet[Long], x: Long) =>
+    val a = s & IntervalSet.below(x)
+    val b = s & IntervalSet.atOrAbove(x)
+    !(a intersects b)
   }
 }
