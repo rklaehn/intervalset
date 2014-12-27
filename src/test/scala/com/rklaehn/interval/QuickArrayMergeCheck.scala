@@ -6,6 +6,8 @@ import org.scalacheck.{Arbitrary, Properties}
 import org.scalacheck.Prop._
 import spire.implicits._
 
+import scala.reflect.ClassTag
+
 object QuickArrayMergeCheck extends Properties("QuickArrayMerge") {
 
   implicit val arbitraryArray = implicitly[Arbitrary[Array[Int]]]
@@ -15,11 +17,30 @@ object QuickArrayMergeCheck extends Properties("QuickArrayMerge") {
     Arrays.sort(a)
     Arrays.sort(b)
     Arrays.sort(r)
-    val r1 = QuickArrayMerge.merge(a,b)
-//    val sa = a.mkString(",")
-//    val sb = b.mkString(",")
-//    println(s"$sa\n$sb\n")
-//    true
+    val order = new CountingOrder[Int]
+    val r1 = QuickArrayMerge.merge(a,b)(order, ClassTag.Int)
+    //    val sa = a.mkString(",")
+    //    val sb = b.mkString(",")
+    //    println(s"$sa\n$sb\n")
+    //    true
+    val worstCase = math.max(a.length + b.length - 1, 0)
+    if(order.count > worstCase) {
+      println(s"$worstCase ${order.count}")
+    }
     r1.corresponds(r)(_ == _)
+  }
+
+  property("merge order") = forAll { (a:Array[Int], b:Array[Int]) =>
+    val r = (a ++ b)
+    Arrays.sort(a)
+    Arrays.sort(b)
+    Arrays.sort(r)
+    val o1 = new CountingOrder[Int]
+    val r1 = QuickArrayMerge.merge(a,b)(o1, ClassTag.Int)
+    val o2 = new CountingOrder[Int]
+    val r2 = QuickArrayMerge.merge(b,a)(o2, ClassTag.Int)
+    val worstCase = math.max(a.length + b.length - 1, 0)
+    println(s"${o1.count} ${o2.count} $worstCase")
+    r1.corresponds(r2)(_ == _)
   }
 }
