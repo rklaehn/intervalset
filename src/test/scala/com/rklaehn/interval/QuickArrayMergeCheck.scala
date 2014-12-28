@@ -23,10 +23,10 @@ object QuickArrayMergeCheck extends Properties("QuickArrayMerge") {
     //    val sb = b.mkString(",")
     //    println(s"$sa\n$sb\n")
     //    true
-    val worstCase = math.max(a.length + b.length - 1, 0)
-    if(order.count > worstCase) {
-      println(s"$worstCase ${order.count}")
-    }
+//    val worstCase = math.max(a.length + b.length - 1, 0)
+//    if(order.count > worstCase) {
+//      println(s"$worstCase ${order.count}")
+//    }
     r1.corresponds(r)(_ == _)
   }
 
@@ -40,7 +40,7 @@ object QuickArrayMergeCheck extends Properties("QuickArrayMerge") {
     val o2 = new CountingOrder[Int]
     val r2 = QuickArrayMerge.merge(b,a)(o2, ClassTag.Int)
     val worstCase = math.max(a.length + b.length - 1, 0)
-    println(s"${o1.count} ${o2.count} $worstCase")
+    // println(s"${o1.count} ${o2.count} $worstCase")
     r1.corresponds(r2)(_ == _)
   }
 }

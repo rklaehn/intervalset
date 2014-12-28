@@ -15,8 +15,8 @@ class QuickArrayMergeTest {
     val b = Array.range(1,100).map(_ * 2)
     val o = new CountingOrder[Int]
     val r = QuickArrayMerge.merge(a,b)(o, ClassTag.Int)
-    println(r.sorted.corresponds(r)(_ == _))
-    println(r.size)
-    println(o.count)
+//    println(r.sorted.corresponds(r)(_ == _))
+//    println(r.size)
+//    println(o.count)
   }
 }
