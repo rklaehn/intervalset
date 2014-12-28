@@ -202,9 +202,88 @@ class IntervalSeq[T] private (
     for(prev <- prev)
       f(Interval.fromBounds(prev, Unbound()))
   }
+}
+
+object IntervalSeq {
+
+  def atOrAbove[T: Order](value: T) = singleton(false, value, K11)
+
+  def above[T: Order](value: T) = singleton(false, value, K01)
+
+  def atOrBelow[T: Order](value: T) = singleton(true, value, K10)
+
+  def below[T: Order](value: T) = singleton(true, value, K00)
+
+  def point[T: Order](value: T) = singleton(false, value, K10)
+
+  def hole[T: Order](value: T) = singleton(true, value, K01)
+
+  def zero[T: Order]: IntervalSeq[T] = new IntervalSeq[T](false, Array()(classTag), Array(), implicitly[Order[T]])
+
+  def one[T: Order]: IntervalSeq[T] = new IntervalSeq[T](true, Array()(classTag), Array(), implicitly[Order[T]])
+
+  def constant[T: Order](value: Boolean) : IntervalSeq[T] = new IntervalSeq[T](value, Array()(classTag), Array(), implicitly[Order[T]])
+
+  def apply[T: Order](interval: Interval[T]): IntervalSeq[T] = interval.fold {
+    case (Closed(a),    Closed(b)) if a == b => point(a)
+    case (Unbound(),    Open(x))      => below(x)
+    case (Unbound(),    Closed(x))    => atOrBelow(x)
+    case (Open(x),      Unbound())    => above(x)
+    case (Closed(x),    Unbound())    => atOrAbove(x)
+    case (Closed(a),    Closed(b))    => fromTo(a, K11, b, K10)
+    case (Closed(a),    Open(b))      => fromTo(a, K11, b, K00)
+    case (Open(a),      Closed(b))    => fromTo(a, K01, b, K10)
+    case (Open(a),      Open(b))      => fromTo(a, K01, b, K00)
+    case (Unbound(),    Unbound())    => one[T]
+    case (EmptyBound(), EmptyBound()) => zero[T]
+  }
+
+  def apply(text:String) : IntervalSeq[Rational] = {
+    val intervals = text.split(';').map(Interval.apply)
+    def intervalToIntervalSet(i:Interval[Rational]) : IntervalSeq[Rational] = apply(i)
+    val simpleSets = intervals.map(intervalToIntervalSet)
+    (zero[Rational] /: simpleSets)(_ | _)
+  }
+
+  private def fromTo[T: Order](a:T, ak:Byte, b:T, bk:Byte) =
+    new IntervalSeq[T](false, Array(a,b)(classTag), Array(ak,bk), implicitly[Order[T]])
+
+  // $COVERAGE-OFF$
+  private def wrong : Nothing = throw new IllegalStateException("")
+  // $COVERAGE-ON$
+
+  private def singleton[T: Order](belowAll: Boolean, value: T, kind: Byte): IntervalSeq[T] =
+    new IntervalSeq(belowAll, Array(value)(classTag), Array(kind), implicitly[Order[T]])
+
+  private val K00 = 0.toByte
+
+  private val K10 = 1.toByte
+
+  private val K01 = 2.toByte
+
+  private val K11 = 3.toByte
+
+  private def classTag[T] = ClassTag.AnyRef.asInstanceOf[ClassTag[T]]
+
+  private def negateKind(kind: Byte) = ((~kind) & 3).toByte
+
+//  private def kindToString(kind:Byte) = ("0" + kind.toBinaryString).takeRight(2).reverse
+
+  private def valueAt(kind: Byte): Boolean = (kind & 1) != 0
+
+  private def valueAbove(kind: Byte): Boolean = (kind & 2) != 0
+
+  private def negateKinds(kinds:Array[Byte]): Array[Byte] = {
+    var i = 0
+    val result = new Array[Byte](kinds.length)
+    while(i < kinds.length) {
+      result(i) = negateKind(kinds(i))
+      i += 1
+    }
+    result
+  }
 
   private abstract class MergeOperation[T] {
-    import IntervalSeq._
     implicit val ct = classTag[T]
     def lhs:IntervalSeq[T]
     def rhs:IntervalSeq[T]
@@ -386,85 +465,5 @@ class IntervalSeq[T] private (
         copyB(b0,b1)
       else
         flipB(b0,b1)
-  }
-}
-
-object IntervalSeq {
-
-  def atOrAbove[T: Order](value: T) = singleton(false, value, K11)
-
-  def above[T: Order](value: T) = singleton(false, value, K01)
-
-  def atOrBelow[T: Order](value: T) = singleton(true, value, K10)
-
-  def below[T: Order](value: T) = singleton(true, value, K00)
-
-  def point[T: Order](value: T) = singleton(false, value, K10)
-
-  def hole[T: Order](value: T) = singleton(true, value, K01)
-
-  def zero[T: Order]: IntervalSeq[T] = new IntervalSeq[T](false, Array()(classTag), Array(), implicitly[Order[T]])
-
-  def one[T: Order]: IntervalSeq[T] = new IntervalSeq[T](true, Array()(classTag), Array(), implicitly[Order[T]])
-
-  def constant[T: Order](value: Boolean) : IntervalSeq[T] = new IntervalSeq[T](value, Array()(classTag), Array(), implicitly[Order[T]])
-
-  def apply[T: Order](interval: Interval[T]): IntervalSeq[T] = interval.fold {
-    case (Closed(a),    Closed(b)) if a == b => point(a)
-    case (Unbound(),    Open(x))      => below(x)
-    case (Unbound(),    Closed(x))    => atOrBelow(x)
-    case (Open(x),      Unbound())    => above(x)
-    case (Closed(x),    Unbound())    => atOrAbove(x)
-    case (Closed(a),    Closed(b))    => fromTo(a, K11, b, K10)
-    case (Closed(a),    Open(b))      => fromTo(a, K11, b, K00)
-    case (Open(a),      Closed(b))    => fromTo(a, K01, b, K10)
-    case (Open(a),      Open(b))      => fromTo(a, K01, b, K00)
-    case (Unbound(),    Unbound())    => one[T]
-    case (EmptyBound(), EmptyBound()) => zero[T]
-  }
-
-  def apply(text:String) : IntervalSeq[Rational] = {
-    val intervals = text.split(';').map(Interval.apply)
-    def intervalToIntervalSet(i:Interval[Rational]) : IntervalSeq[Rational] = apply(i)
-    val simpleSets = intervals.map(intervalToIntervalSet)
-    (zero[Rational] /: simpleSets)(_ | _)
-  }
-
-  private def fromTo[T: Order](a:T, ak:Byte, b:T, bk:Byte) =
-    new IntervalSeq[T](false, Array(a,b)(classTag), Array(ak,bk), implicitly[Order[T]])
-
-  // $COVERAGE-OFF$
-  private def wrong : Nothing = throw new IllegalStateException("")
-  // $COVERAGE-ON$
-
-  private def singleton[T: Order](belowAll: Boolean, value: T, kind: Byte): IntervalSeq[T] =
-    new IntervalSeq(belowAll, Array(value)(classTag), Array(kind), implicitly[Order[T]])
-
-  private val K00 = 0.toByte
-
-  private val K10 = 1.toByte
-
-  private val K01 = 2.toByte
-
-  private val K11 = 3.toByte
-
-  private def classTag[T] = ClassTag.AnyRef.asInstanceOf[ClassTag[T]]
-
-  private def negateKind(kind: Byte) = ((~kind) & 3).toByte
-
-//  private def kindToString(kind:Byte) = ("0" + kind.toBinaryString).takeRight(2).reverse
-
-  private def valueAt(kind: Byte): Boolean = (kind & 1) != 0
-
-  private def valueAbove(kind: Byte): Boolean = (kind & 2) != 0
-
-  private def negateKinds(kinds:Array[Byte]): Array[Byte] = {
-    var i = 0
-    val result = new Array[Byte](kinds.length)
-    while(i < kinds.length) {
-      result(i) = negateKind(kinds(i))
-      i += 1
-    }
-    result
   }
 }
