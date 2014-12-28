@@ -4,7 +4,7 @@ This is a data structure for sets of non-overlapping intervals of based on order
 
 ## Internal representation
 
-An interval seq consists of a Boolean value *belowAll* giving the value at negative infinity, and a (potentially empty) strictly ordered sequene of boundaries. A boundary is a pair consisting of a value *x* and a kind. Kind can be one of four values: 
+An interval seq consists of a Boolean value *belowAll* giving the value at negative infinity, and a (potentially empty) strictly ordered sequene of boundaries. A boundary is a pair consisting of a value *x* of type T and a kind of type Byte. Kind can have one of four values: 
 
 |kind|value at x|value after x|
 |----|----------|-------------|
