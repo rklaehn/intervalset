@@ -70,12 +70,12 @@ class IntervalSeqTest {
     assertTrue(atOrAbove(1).isProperSupersetOf(above(1)))
     assertFalse(above(1).isProperSupersetOf(atOrAbove(1)))
   }
-//
-//  @Test
-//  def algebraTest(): Unit = {
-//    val algebra = IntervalSetAlgebra.booleanAlgebra[Long]
-//    val a = IntervalSet.above(1L)
-//    val b = IntervalSet.below(1L)
-//    assertEquals(a ^ b, algebra.xor(a, b))
-//  }
+
+  @Test
+  def algebraTest(): Unit = {
+    val algebra = IntervalSeqAlgebra.booleanAlgebra[Long]
+    val a = IntervalSeq.above(1L)
+    val b = IntervalSeq.below(1L)
+    assertEquals(a ^ b, algebra.xor(a, b))
+  }
 }
