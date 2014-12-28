@@ -27,4 +27,5 @@ scalacOptions ++= Seq("-unchecked", "-feature")
 initialCommands in console += """
 import com.rklaehn.interval._
 import spire.math._
+import spire.implicits._
 """
