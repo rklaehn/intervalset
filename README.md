@@ -1,6 +1,6 @@
 # intervalsets
 
-Efficient immutable interval sets
+Efficient immutable interval sets for [spire](https://github.com/non/spire)
 
 [![Build Status](https://travis-ci.org/rklaehn/intervalset.png)](https://travis-ci.org/rklaehn/intervalset)
 
