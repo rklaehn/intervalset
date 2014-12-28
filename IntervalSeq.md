@@ -51,7 +51,7 @@ Best case performance will be reached e.g. if one sequence of boundaries is much
 
 Since the internal representation is a sequence, all boundaries always have to be copied to the result. So given two sequences of boundaries of size m and n, the number of boundary copy operations will always be m+n in the worst case for all operations.
 
-However, copying elements using System.arraycopy is extremely fast, so you will only be affected by this for very large bounardy sequences or in case the comparison operation is extremely cheap. However, for primitive types with a very cheap comparison operation it is usually possible to use [IntervalTrie](IntervalTrie.md).
+However, copying elements using System.arraycopy is extremely fast, so you will only be affected by this for very large boundary sequences or in case the comparison operation is extremely cheap. However, for primitive types with a very cheap comparison operation it is usually possible to use [IntervalTrie](IntervalTrie.md).
 
 
 ## Set/Element operations
