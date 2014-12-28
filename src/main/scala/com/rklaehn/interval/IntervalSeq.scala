@@ -85,10 +85,10 @@ class IntervalSeq[T] private (
   def ^(rhs:IntervalSeq[T]) = new Xor[T](lhs, rhs).result
 
   // todo: provide efficient implementation
-  def intersects(rhs: IntervalSeq[T]): Boolean = !(lhs & rhs).isEmpty
+  def intersects(rhs: IntervalSeq[T]): Boolean = !new Disjoint[T](lhs, rhs).result
 
   // todo: provide efficient implementation
-  def isSupersetOf(rhs: IntervalSeq[T]): Boolean = (lhs & rhs) == rhs
+  def isSupersetOf(rhs: IntervalSeq[T]): Boolean = new IsSupersetOf[T](lhs, rhs).result
 
   def isProperSupersetOf(rhs: IntervalSeq[T]): Boolean = isSupersetOf(rhs) && (lhs != rhs)
 
@@ -267,8 +267,6 @@ object IntervalSeq {
 
   private def negateKind(kind: Byte) = ((~kind) & 3).toByte
 
-//  private def kindToString(kind:Byte) = ("0" + kind.toBinaryString).takeRight(2).reverse
-
   private def valueAt(kind: Byte): Boolean = (kind & 1) != 0
 
   private def valueAbove(kind: Byte): Boolean = (kind & 2) != 0
@@ -284,20 +282,32 @@ object IntervalSeq {
   }
 
   private abstract class MergeOperation[T] {
-    implicit val ct = classTag[T]
+
     def lhs:IntervalSeq[T]
+
     def rhs:IntervalSeq[T]
-    val a0 = lhs.belowAll
-    val b0 = rhs.belowAll
-    val a = lhs.values
-    val b = rhs.values
-    val ak = lhs.kinds
-    val bk = rhs.kinds
-    def r0 = op(a0, b0)
-    val order = lhs.order
-    val r = new Array[T](a.length + b.length)
-    val rk = new Array[Byte](a.length + b.length)
-    var ri = 0
+
+    private[this] val a0 = lhs.belowAll
+
+    private[this] val b0 = rhs.belowAll
+
+    private[this] val r0 = op(a0, b0)
+
+    private[this] val a = lhs.values
+
+    private[this] val b = rhs.values
+
+    private[this] val ak = lhs.kinds
+
+    private[this] val bk = rhs.kinds
+
+    private[this] val order = lhs.order
+
+    private[this] val r = Array.ofDim[T](a.length + b.length)(classTag)
+
+    private[this] val rk = new Array[Byte](a.length + b.length)
+
+    private[this] var ri = 0
 
     def copyA(a0: Int, a1: Int): Unit = {
       System.arraycopy(a, a0, r, ri, a1 - a0)
@@ -422,7 +432,7 @@ object IntervalSeq {
 
     override def op(a: Boolean, b: Boolean): Boolean = a & b
 
-    override def op(a: Byte, b: Byte): Int = (a & b)
+    override def op(a: Byte, b: Byte): Int = a & b
 
     override def fromA(a0: Int, a1: Int, b: Boolean): Unit =
       if(b)
@@ -437,7 +447,7 @@ object IntervalSeq {
 
     override def op(a: Boolean, b: Boolean): Boolean = a | b
 
-    override def op(a: Byte, b: Byte): Int = (a | b)
+    override def op(a: Byte, b: Byte): Int = a | b
 
     override def fromA(a0: Int, a1: Int, b: Boolean): Unit =
       if(!b)
@@ -452,7 +462,7 @@ object IntervalSeq {
 
     override def op(a: Boolean, b: Boolean): Boolean = a ^ b
 
-    override def op(a: Byte, b: Byte): Int = (a ^ b)
+    override def op(a: Byte, b: Byte): Int = a ^ b
 
     override def fromA(a0: Int, a1: Int, b: Boolean): Unit =
       if(!b)
@@ -465,5 +475,120 @@ object IntervalSeq {
         copyB(b0,b1)
       else
         flipB(b0,b1)
+  }
+
+  private abstract class BooleanOperation[T] {
+
+    def lhs:IntervalSeq[T]
+
+    def rhs:IntervalSeq[T]
+
+    private[this] val a0 = lhs.belowAll
+
+    private[this] val b0 = rhs.belowAll
+
+    private[this] val a = lhs.values
+
+    private[this] val b = rhs.values
+
+    private[this] val ak = lhs.kinds
+
+    private[this] val bk = rhs.kinds
+
+    private[this] val order = lhs.order
+
+    protected def op(a:Boolean, b:Boolean) : Boolean
+
+    protected def op(a:Byte, b:Byte) : Boolean
+
+    protected def collision(ai: Int, bi: Int): Boolean =
+      op(ak(ai), bk(bi))
+
+    protected def fromA(a0:Int, a1: Int, b:Boolean) : Boolean
+
+    protected def fromB(a:Boolean, b0:Int, b1: Int) : Boolean
+
+    @inline def valueAbove(kind: Byte): Boolean = (kind & 2) != 0
+
+    @inline def aBelow(i:Int) = if(i>0) valueAbove(ak(i-1)) else a0
+
+    @inline def bBelow(i:Int) = if(i>0) valueAbove(bk(i-1)) else b0
+
+    def binarySearch(array: Array[T], key: T, from: Int, until: Int): Int = {
+      var low = from
+      var high = until - 1
+      while (low <= high) {
+        val mid = (low + high) >>> 1
+        val midVal = array(mid)
+        val c = order.compare(midVal, key)
+        if (c < 0) {
+          low = mid + 1
+        }
+        else if (c > 0) {
+          high = mid - 1
+        }
+        else {
+          // scalastyle:off return
+          return mid
+          // scalastyle:on return
+        }
+      }
+      -(low + 1)
+    }
+
+    def merge0(a0: Int, a1: Int, b0: Int, b1: Int): Boolean = {
+      if(a0 == a1 && b0 == b1) {
+        true
+      } else if (a0 == a1) {
+        fromB(aBelow(a0), b0, b1)
+      } else if (b0 == b1) {
+        fromA(a0, a1, bBelow(b0))
+      } else {
+        val am = (a0 + a1) / 2
+        val res = binarySearch(b, a(am), b0, b1)
+        if (res >= 0) {
+          // same elements
+          val bm = res
+          // merge everything below a(am) with everything below the found element
+          merge0(a0, am, b0, bm) &&
+          // add the elements a(am) and b(bm)
+          collision(am, bm) &&
+          // merge everything above a(am) with everything above the found element
+          merge0(am + 1, a1, bm + 1, b1)
+        } else {
+          val bm = -res - 1
+          // merge everything below a(am) with everything below the found insertion point
+          merge0(a0, am, b0, bm) &&
+          // add a(am)
+          fromA(am, am + 1, bBelow(bm)) &&
+          // everything above a(am) with everything above the found insertion point
+          merge0(am + 1, a1, bm, b1)
+        }
+      }
+    }
+
+    val result = op(a0, b0) && merge0(0, a.length, 0, b.length)
+  }
+
+  private class IsSupersetOf[T](val lhs:IntervalSeq[T], val rhs:IntervalSeq[T]) extends BooleanOperation[T] {
+
+    override def op(a: Boolean, b: Boolean): Boolean = a | !b
+
+    override def op(a: Byte, b: Byte): Boolean = ((a | ~b) & 3) == 3
+
+    override def fromA(a0: Int, a1: Int, b: Boolean): Boolean = !b
+
+    override def fromB(a: Boolean, b0: Int, b1: Int): Boolean = a
+  }
+
+  private class Disjoint[T](val lhs:IntervalSeq[T], val rhs:IntervalSeq[T]) extends BooleanOperation[T] {
+
+    override def op(a: Boolean, b: Boolean): Boolean = !(a & b)
+
+    override def op(a: Byte, b: Byte): Boolean = (a & b) == 0
+
+    override def fromA(a0: Int, a1: Int, b: Boolean): Boolean = !b
+
+    override def fromB(a: Boolean, b0: Int, b1: Int): Boolean = !a
   }
 }
