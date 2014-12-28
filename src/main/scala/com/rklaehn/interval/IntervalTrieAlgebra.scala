@@ -1,25 +1,25 @@
 package com.rklaehn.interval
 
-import com.rklaehn.interval.IntervalSet.Element
+import com.rklaehn.interval.IntervalTrie.Element
 import spire.algebra.{Bool, Eq}
 
-object IntervalSetAlgebra {
+object IntervalTrieAlgebra {
 
-  implicit def booleanAlgebra[T:Element] = new Bool[IntervalSet[T]] with Eq[IntervalSet[T]] {
+  implicit def booleanAlgebra[T:Element] = new Bool[IntervalTrie[T]] with Eq[IntervalTrie[T]] {
 
-    def eqv(x: IntervalSet[T], y: IntervalSet[T]) = x == y
+    def eqv(x: IntervalTrie[T], y: IntervalTrie[T]) = x == y
 
-    def zero = IntervalSet.zero[T]
+    def zero = IntervalTrie.zero[T]
 
-    def one = IntervalSet.one[T]
+    def one = IntervalTrie.one[T]
 
-    def complement(a: IntervalSet[T]) = ~a
+    def complement(a: IntervalTrie[T]) = ~a
 
-    def or(a: IntervalSet[T], b: IntervalSet[T]) = a | b
+    def or(a: IntervalTrie[T], b: IntervalTrie[T]) = a | b
 
-    def and(a: IntervalSet[T], b: IntervalSet[T]) = a & b
+    def and(a: IntervalTrie[T], b: IntervalTrie[T]) = a & b
 
-    override def xor(a: IntervalSet[T], b: IntervalSet[T]) = a ^ b
+    override def xor(a: IntervalTrie[T], b: IntervalTrie[T]) = a ^ b
   }
 
 //  implicit def ordering[T:IntervalSetElement]: PartialOrdering[IntervalSet[T]] = new PartialOrdering[IntervalSet[T]] {

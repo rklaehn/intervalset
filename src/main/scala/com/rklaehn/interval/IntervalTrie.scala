@@ -1,582 +1,373 @@
 package com.rklaehn.interval
 
-private[interval] object IntervalTrie {
+import language.implicitConversions
+import spire.algebra.{AdditiveMonoid, Order}
+import spire.math.interval._
+import spire.math._
 
-  import java.lang.Long.numberOfLeadingZeros
+import scala.annotation.tailrec
+import scala.collection.AbstractTraversable
 
-  @inline final def toPrefix(key:Long) : Long = key - Long.MinValue
+sealed abstract class IntervalTrie[T] extends AbstractIntervalSet[T, IntervalTrie[T]]
 
-  @inline final def fromPrefix(key:Long) : Long = key + Long.MinValue
+object IntervalTrie {
 
-  @inline final def unsigned_<(i: Long, j: Long) = (i < j) ^ (i < 0L) ^ (j < 0L)
+  trait Element[@specialized(Float, Int, Long, Double) T] {
 
-  @inline final def levelAbove(a:Long, b:Long) : Byte =
-    (63 - numberOfLeadingZeros(a ^ b)).toByte
+    implicit def ops:Order[T] with AdditiveMonoid[T]
 
-  @inline final def maskAbove(prefix:Long, bit:Byte) = {
-    // this is not the same as (-1L << (bit + 1)) due to the somewhat strange behavior of the java shift operator
-    // -1L << 64 gives -1L, whereas (-1L << 63) << 1 gives 0L like we need
-    prefix & ((-1L << bit) << 1)
+    def toLong(value:T) : Long
+
+    def fromLong(key:Long) : T
   }
 
-  @inline final def zeroAt(value:Long, bit:Byte) =
-    (value & (1L << bit)) == 0L
+  implicit object ByteElement extends Element[Byte] {
 
-  @inline final def hasMatchAt(key: Long, prefix: Long, level: Byte) =
-    maskAbove(key, level) == prefix
+    def ops = spire.std.byte.ByteAlgebra
 
-  def concat(t1 : Leaf, t2 : Leaf) : IntervalTrie = {
-    if(!unsigned_<(t1.prefix, t2.prefix))
-      throw new IllegalArgumentException("Arguments of concat must be ordered")
-    val p1 = t1.prefix
-    val p2 = t2.prefix
-    val l = levelAbove(p1, p2)
-    val p = maskAbove(p1, l)
-    Branch(p, l, t1, t2)
+    def toLong(value:Byte) = value
+
+    def fromLong(key:Long): Byte = key.toByte
   }
 
-//  def join(p1 : Long, t1 : IntervalTrie, p2 : Long, t2 : IntervalTrie) : IntervalTrie = {
-//    val l = levelAbove(p1, p2)
-//    val p = maskAbove(p1, l)
-//    if (zeroAt(p1, l))
-//      Branch(p, l, t1, t2)
-//    else
-//      Branch(p, l, t2, t1)
-//  }
+  implicit object ShortElement extends Element[Short] {
 
-  /**
-   * Creates a branch from two possibly null children. In case one of the children is null, the other child will
-   * be returned. So if both children are null, this operation can return null.
-   * @param p the prefix to be used for a new branch
-   * @param level the level to be used for a new branch
-   * @param l the left child
-   * @param r the right child
-   * @return the result, can be null
-   */
-  @inline private final def branch(p:Long, level:Byte, l:IntervalTrie, r:IntervalTrie) : IntervalTrie =
-    if(l eq null)
-      r
-    else if(r eq null)
-      l
-    else
-      Branch(p,level,l,r)
+    def ops = spire.std.short.ShortAlgebra
 
-  // $COVERAGE-OFF$
-  private def unreachable : Nothing = throw new NotImplementedError("You should never get here")
-  // $COVERAGE-ON$
+    def toLong(value:Short) = value
 
-  sealed abstract class BooleanBinaryOperator {
+    def fromLong(key:Long): Short = key.toShort
+  }
 
-    @inline private final def disjoint(a0:Boolean, a: IntervalTrie, b0:Boolean, b: IntervalTrie): Boolean = {
-      val a_p = a.prefix
-      val b_p = b.prefix
-      val level = levelAbove(a_p, b_p)
-      if (zeroAt(a_p, level)) {
-        // a is before b, so it is overlapped by b0
-        // b is behind a, so it is overlapped by a0 ^ a.sign
-        overlapA(a0, a, b0) && overlapB(a0 ^ a.sign, b0, b)
-      } else {
-        // b is before a, so it is overlapped by a0
-        // a is behind b, so it is overlapped by b0 ^ b.sign
-        overlapB(a0, b0, b) && overlapA(a0, a, b0 ^ b.sign)
-      }
+  implicit object IntElement extends Element[Int] {
+
+    def ops = spire.std.int.IntAlgebra
+
+    def toLong(value:Int) = value
+
+    def fromLong(key:Long) : Int = key.toInt
+  }
+
+  implicit object LongElement extends Element[Long] {
+
+    def ops = spire.std.long.LongAlgebra
+
+    def toLong(value:Long) = value
+
+    def fromLong(key:Long) : Long = key
+  }
+
+  implicit object FloatElement extends Element[Float] {
+
+    def ops = spire.std.float.FloatAlgebra
+
+    def toLong(value:Float): Long = {
+      if(value.isNaN)
+        throw new IllegalArgumentException("NaN")
+      // sign and magnitude signed integer
+      val signAndMagnitude = java.lang.Float.floatToIntBits(value)
+      // two's complement signed integer: if the sign bit is set, negate everything except the sign bit
+      val twosComplement = if(signAndMagnitude>=0) signAndMagnitude else (-signAndMagnitude | (1L<<63))
+      twosComplement
     }
 
-    protected def op(a:Boolean, b:Boolean) : Boolean
+    def fromLong(twosComplement:Long): Float = {
+      // sign and magnitude signed integer: if the sign bit is set, negate everything except the sign bit
+      val signAndMagnitude = if(twosComplement>=0) twosComplement else (-twosComplement | (1L<<63))
+      // double from sign and magnitude signed integer
+      java.lang.Float.intBitsToFloat(signAndMagnitude.toInt)
+    }
+  }
 
-    /**
-     * This is called if two leaves collide (have the same prefix)
-     * @param a0 the value before a
-     * @param a a leaf from the lhs
-     * @param b0 the value before b
-     * @param b a leaf from the rhs
-     * @return the result. Can be a leaf or null
-     */
-    protected def collision(a0:Boolean, a:Leaf, b0:Boolean,b:Leaf) : Boolean
+  implicit object CharElement extends Element[Char] {
 
-    /**
-     * This will be called when a is completely covered by a contiguous interval of b
-     * @param a0
-     * @param a a non-null tree (leaf or branch)
-     * @param b0 the constant value of b in the complete interval of a
-     * @return the result, can be null
-     */
-    protected def overlapA(a0: Boolean, a:IntervalTrie, b0:Boolean) : Boolean
+    val ops: Order[Char] with AdditiveMonoid[Char] = new spire.std.CharAlgebra with AdditiveMonoid[Char] {
 
-    /**
-     * This will be called when b is completely covered by a contiguous interval of a
-     * @param a0 the constant value of a in the complete interval of b
-     * @param b0
-     * @param b a non-null tree (leaf or branch)
-     * @return the result, can be null
-     */
-    protected def overlapB(a0:Boolean, b0:Boolean, b:IntervalTrie) : Boolean
+      def zero: Char = 0.toChar
 
-    /**
-     * Performs the binary operation for two arbitrary trees
-     * @param a0 the value before a
-     * @param a a node (leaf or branch) from the lhs
-     * @param b0 the value before b
-     * @param b a node (leaf or branch) from the rhs
-     * @return the result, can be null
-     */
-    private final def op(a0:Boolean, a: IntervalTrie, b0:Boolean, b: IntervalTrie): Boolean = {
-      val a_l = a.level
-      val a_p = a.prefix
-      val b_l = b.level
-      val b_p = b.prefix
-
-      if (a_l > b_l) {
-        // a is larger => a must be a branch
-        if (!hasMatchAt(b_p, a_p, a_l)) {
-          // the prefix of a and b is different. We don't care if a is a branch or a leaf
-          disjoint(a0, a, b0, b)
-        } else a match {
-          case a: Branch =>
-            val am = a0 ^ a.left.sign
-            if (zeroAt(b_p, a_l)) {
-              // b fits into the left child of a
-              op(a0, a.left, b0, b) && overlapA(am, a.right, b0 ^ b.sign)
-            } else {
-              // b fits into the right child of a
-              overlapA(a0, a.left, b0) && op(am, a.right, b0, b)
-            }
-          // $COVERAGE-OFF$
-          case _ => unreachable
-          // $COVERAGE-ON$
-        }
-      } else if (b_l > a_l) {
-        // b is larger => b must be a branch
-        if (!hasMatchAt(a_p, b_p, b_l)) {
-          // the prefix of a and b is different. We don't care if b is a branch or a leaf
-          disjoint(a0, a, b0, b)
-        } else b match {
-          case b: Branch =>
-            val bm = b0 ^ b.left.sign
-            if (zeroAt(a_p, b_l)) {
-              // a fits into the left child of b
-              op(a0, a, b0, b.left) && overlapB(a0 ^ a.sign, bm, b.right)
-            } else {
-              // a fits into the right child of b
-              overlapB(a0, b0, b.left) && op(a0, a, bm, b.right)
-            }
-          // $COVERAGE-OFF$
-          case _ => unreachable
-          // $COVERAGE-ON$
-        }
-      } else {
-        // a_l == b_l, trees are the same size
-        if (a_p == b_p) {
-          (a, b) match {
-            case (a: Branch, b: Branch) =>
-              val am = a0 ^ a.left.sign
-              val bm = b0 ^ b.left.sign
-              // same prefix. leaves have to be merged
-              // todo: check if we can return b unchanged
-              op(a0, a.left, b0, b.left) && op(am, a.right, bm, b.right)
-            case (a: Leaf, b: Leaf) =>
-              collision(a0, a, b0, b)
-            // $COVERAGE-OFF$
-            case _ => unreachable
-            // $COVERAGE-ON$
-          }
-        } else {
-          // same mask, different prefix
-          disjoint(a0, a, b0, b)
-        }
-      }
+      def plus(x: Char, y: Char): Char = (x.toInt + y.toInt).toChar
     }
 
-    final def apply(a0: Boolean, a: IntervalTrie, b0: Boolean, b: IntervalTrie) : Boolean = op(a0, b0) &&  {
-      if ((a eq null) && (b eq null))
-        true
-      else if (a eq null)
-        overlapB(a0, b0, b)
-      else if (b eq null)
-        overlapA(a0, a, b0)
+    def toLong(value:Char) = value.toLong
+
+    def fromLong(key:Long): Char = key.toChar
+  }
+
+  implicit object DoubleElement extends Element[Double] {
+
+    def ops = spire.std.double.DoubleAlgebra
+
+    def toLong(value:Double): Long = {
+      if(value.isNaN)
+        throw new IllegalArgumentException("NaN")
+      // sign and magnitude signed integer
+      val signAndMagnitude = java.lang.Double.doubleToLongBits(value)
+      // two's complement signed integer: if the sign bit is set, negate everything except the sign bit
+      val twosComplement = if(signAndMagnitude>=0) signAndMagnitude else (-signAndMagnitude | (1L<<63))
+      twosComplement
+    }
+
+    def fromLong(twosComplement:Long): Double = {
+      // sign and magnitude signed integer: if the sign bit is set, negate everything except the sign bit
+      val signAndMagnitude = if(twosComplement>=0) twosComplement else (-twosComplement | (1L<<63))
+      // double from sign and magnitude signed integer
+      java.lang.Double.longBitsToDouble(signAndMagnitude)
+    }
+  }
+
+  implicit object UByteElement extends Element[UByte] {
+
+    def ops = spire.math.UByte.UByteAlgebra
+
+    def toLong(value:UByte) = value.toLong
+
+    def fromLong(key:Long) : UByte = UByte(key.toByte)
+  }
+
+  implicit object UShortElement extends Element[UShort] {
+
+    def ops = spire.math.UShort.UShortAlgebra
+
+    def toLong(value:UShort) = value.toLong
+
+    def fromLong(key:Long) : UShort = UShort(key.toShort)
+  }
+
+  implicit object UIntElement extends Element[UInt] {
+
+    def ops = spire.math.UInt.UIntAlgebra
+
+    def toLong(value:UInt) = value.toLong
+
+    def fromLong(key:Long) : UInt = UInt(key.toInt)
+  }
+
+  implicit object ULongElement extends Element[ULong] {
+
+    def ops = spire.math.ULong.ULongAlgebra
+
+    def toLong(value:ULong) = value.toLong + Long.MinValue
+
+    def fromLong(key:Long) : ULong = ULong(key - Long.MinValue)
+  }
+
+  import Tree._
+
+  private implicit def tIsLong[T](value:T)(implicit tl:Element[T]) = tl.toLong(value)
+
+  private[interval] def fromKind[T:Element](value:T, kind:Int) = {
+    val bound = kind match {
+      case 0 => Below(value)
+      case 1 => Above(value)
+      case 2 => Both(value)
+    }
+    IntervalTrie[T](false, bound)
+  }
+
+  def constant[T:Element](value:Boolean) = IntervalTrie[T](value, null)
+
+  def zero[T:Element] = constant[T](false)
+
+  def point[T:Element](value:T) = IntervalTrie[T](false, Tree.Leaf(toPrefix(value), true, false))
+
+  def atOrAbove[T:Element](value:T) = IntervalTrie[T](false, Tree.Leaf(toPrefix(value), true, true))
+
+  def above[T:Element](value:T) = IntervalTrie[T](false, Tree.Leaf(toPrefix(value), false, true))
+
+  def one[T:Element] = constant[T](true)
+
+  def hole[T:Element](value:T) = IntervalTrie[T](true, Tree.Leaf(toPrefix(value), true, false))
+
+  def below[T:Element](value:T) = IntervalTrie[T](true, Tree.Leaf(toPrefix(value), true, true))
+
+  def atOrBelow[T:Element](value:T) = IntervalTrie[T](true, Tree.Leaf(toPrefix(value), false, true))
+
+  def apply[T:Element](interval:Interval[T]) : IntervalTrie[T] = interval.fold {
+    case (Closed(a),    Closed(b)) if a == b => point(a)
+    case (Unbound(),    Open(x))      => below(x)
+    case (Unbound(),    Closed(x))    => atOrBelow(x)
+    case (Open(x),      Unbound())    => above(x)
+    case (Closed(x),    Unbound())    => atOrAbove(x)
+    case (Closed(a),    Closed(b))    => fromTo(Below(a), Above(b))
+    case (Closed(a),    Open(b))      => fromTo(Below(a), Below(b))
+    case (Open(a),      Closed(b))    => fromTo(Above(a), Above(b))
+    case (Open(a),      Open(b))      => fromTo(Above(a), Below(b))
+    case (Unbound(),    Unbound())    => one[T]
+    case (EmptyBound(), EmptyBound()) => zero[T]
+  }
+
+  private object Below {
+
+    def apply[T: Element](value:T) = Leaf(toPrefix(value), true, true)
+
+    def unapply(l:Leaf) = if(l.at && l.sign) Some(l.key) else None
+  }
+
+  private object Above {
+
+    def apply[T: Element](value:T) = Leaf(toPrefix(value), false, true)
+
+    def unapply(l:Leaf) = if(!l.at && l.sign) Some(l.key) else None
+  }
+
+  private object Both {
+
+    def apply[T: Element](value:T) = Leaf(toPrefix(value), true, false)
+
+    def unapply(l:Leaf) = if(l.at && !l.sign) Some(l.key) else None
+  }
+
+  private def fromTo[T:Element](a:Leaf, b:Leaf) : IntervalTrie[T] = {
+    IntervalTrie[T](false, concat(a, b))
+  }
+
+  def apply(text:String) : IntervalTrie[Long] = {
+    val la = spire.std.long.LongAlgebra
+    def rationalToLong(r:Rational) : Long = {
+      if(r>Long.MaxValue || r<Long.MinValue)
+        throw new NumberFormatException("Integer number too large")
       else
-        op(a0, a, b0, b)
+        r.toLong
     }
+    def intervalToIntervalSet(i:Interval[Long]) : IntervalTrie[Long] = apply(i)
+    val intervals = text.split(';').map(Interval.apply).map(_.mapBounds(rationalToLong)(la))
+    val simpleSets = intervals.map(intervalToIntervalSet)
+    (zero[Long] /: simpleSets)(_ | _)
   }
 
-  /**
-   * A binary calculator that preserves the order of operands. This is the most generic case. It is used even for
-   * symmetric operations. There might be some performance benefit in doing an operator for symmetric operations, but
-   * I doubt that it is worth it. And in any case I am too lazy right now.
-   */
-  sealed abstract class OrderedBinaryOperator {
-
-    /**
-     * Joins two non-overlapping leaves
-     * @param a0 the value before a
-     * @param a a node (leaf or branch) from the lhs
-     * @param b0 the value before b
-     * @param b a node (leaf or branch) from the rhs
-     * @return the result, can be null
-     */
-    @inline private final def join(a0:Boolean, a: IntervalTrie, b0:Boolean, b: IntervalTrie): IntervalTrie = {
-      val a_p = a.prefix
-      val b_p = b.prefix
-      val level = levelAbove(a_p, b_p)
-      val p = maskAbove(a_p, level)
-      if (zeroAt(a_p, level)) {
-        // a is before b, so it is overlapped by b0
-        val a1 = overlapA(a0, a, b0)
-        // b is behind a, so it is overlapped by a0 ^ a.sign
-        val b1 = overlapB(a0 ^ a.sign, b0, b)
-        // make the branch (results can be empty)
-        branch(p, level, a1, b1)
-      } else {
-        // b is before a, so it is overlapped by a0
-        val b1 = overlapB(a0, b0, b)
-        // a is behind b, so it is overlapped by b0 ^ b.sign
-        val a1 = overlapA(a0, a, b0 ^ b.sign)
-        // make the branch (results can be empty)
-        branch(p, level, b1, a1)
-      }
-    }
-
-    /**
-     * This is called if two leaves collide (have the same prefix)
-     * @param a0 the value before a
-     * @param a a leaf from the lhs
-     * @param b0 the value before b
-     * @param b a leaf from the rhs
-     * @return the result. Can be a leaf or null
-     */
-    protected def collision(a0:Boolean, a:Leaf, b0:Boolean,b:Leaf) : IntervalTrie
-
-    /**
-     * This will be called when a is completely covered by a contiguous interval of b
-     * @param a0
-     * @param a a non-null tree (leaf or branch)
-     * @param b0 the constant value of b in the complete interval of a
-     * @return the result, can be null
-     */
-    protected def overlapA(a0: Boolean, a:IntervalTrie, b0:Boolean) : IntervalTrie
-
-    /**
-     * This will be called when b is completely covered by a contiguous interval of a
-     * @param a0 the constant value of a in the complete interval of b
-     * @param b0
-     * @param b a non-null tree (leaf or branch)
-     * @return the result, can be null
-     */
-    protected def overlapB(a0:Boolean, b0:Boolean, b:IntervalTrie) : IntervalTrie
-
-    /**
-     * Performs the binary operation for two arbitrary trees
-     * @param a0 the value before a
-     * @param a a node (leaf or branch) from the lhs
-     * @param b0 the value before b
-     * @param b a node (leaf or branch) from the rhs
-     * @return the result, can be null
-     */
-    private final def op(a0:Boolean, a: IntervalTrie, b0:Boolean, b: IntervalTrie): IntervalTrie = {
-      val a_l = a.level
-      val a_p = a.prefix
-      val b_l = b.level
-      val b_p = b.prefix
-
-      if (a_l > b_l) {
-        // a is larger => a must be a branch
-        if (!hasMatchAt(b_p, a_p, a_l)) {
-          // the prefix of a and b is different. We don't care if a is a branch or a leaf
-          join(a0, a, b0, b)
-        } else a match {
-          case a: Branch =>
-            val am = a0 ^ a.left.sign
-            if (zeroAt(b_p, a_l)) {
-              // b fits into the left child of a
-              a.lr(op(a0, a.left, b0, b), overlapA(am, a.right, b0 ^ b.sign))
-            } else {
-              // b fits into the right child of a
-              a.lr(overlapA(a0, a.left, b0), op(am, a.right, b0, b))
-            }
-          // $COVERAGE-OFF$
-          case _ => unreachable
-          // $COVERAGE-ON$
-        }
-      } else if (b_l > a_l) {
-        // b is larger => b must be a branch
-        if (!hasMatchAt(a_p, b_p, b_l)) {
-          // the prefix of a and b is different. We don't care if b is a branch or a leaf
-          join(a0, a, b0, b)
-        } else b match {
-          case b: Branch =>
-            val bm = b0 ^ b.left.sign
-            if (zeroAt(a_p, b_l)) {
-              // a fits into the left child of b
-              b.lr(op(a0, a, b0, b.left), overlapB(a0 ^ a.sign, bm, b.right))
-            } else {
-              // a fits into the right child of b
-              b.lr(overlapB(a0, b0, b.left), op(a0, a, bm, b.right))
-            }
-          // $COVERAGE-OFF$
-          case _ => unreachable
-          // $COVERAGE-ON$
-        }
-      } else {
-        // a_l == b_l, trees are the same size
-        if (a_p == b_p) {
-          (a, b) match {
-            case (a: Branch, b: Branch) =>
-              val am = a0 ^ a.left.sign
-              val bm = b0 ^ b.left.sign
-              // same prefix. leaves have to be merged
-              // todo: check if we can return b unchanged
-              a.lr(op(a0, a.left, b0, b.left), op(am, a.right, bm, b.right))
-            case (a: Leaf, b: Leaf) =>
-              collision(a0, a, b0, b)
-            // $COVERAGE-OFF$
-            case _ => unreachable
-            // $COVERAGE-ON$
-          }
-        } else {
-          // same mask, different prefix
-          join(a0, a, b0, b)
-        }
-      }
-    }
-
-    final def apply(a0: Boolean, a: IntervalTrie, b0: Boolean, b: IntervalTrie) = {
-      if ((a eq null) && (b eq null))
-        null
-      else if (a eq null)
-        overlapB(a0, b0, b)
-      else if (b eq null)
-        overlapA(a0, a, b0)
-      else
-        op(a0, a, b0, b)
-    }
-  }
-
-  object DisjointCalculator extends BooleanBinaryOperator {
-
-    override protected def op(a: Boolean, b: Boolean): Boolean = !(a & b)
-
-    override protected def overlapB(a0: Boolean, b0: Boolean, b: IntervalTrie): Boolean = !a0
-
-    override protected def overlapA(a0: Boolean, a: IntervalTrie, b0: Boolean): Boolean = !b0
-
-    override protected def collision(a0: Boolean, a: Leaf, b0: Boolean, b: Leaf): Boolean = {
-      val at1 = !((a.at ^ a0) & (b.at ^ b0))
-      val above1 = !((a.above ^ a0) & (b.above ^ b0))
-      at1 && above1
-    }
-  }
-
-  object SupersetOfCalculator extends BooleanBinaryOperator {
-
-    override protected def op(a: Boolean, b: Boolean): Boolean = a | !b
-
-    override protected def overlapB(a0: Boolean, b0: Boolean, b: IntervalTrie): Boolean = a0
-
-    override protected def overlapA(a0: Boolean, a: IntervalTrie, b0: Boolean): Boolean = !b0
-
-    override protected def collision(a0: Boolean, a: Leaf, b0: Boolean, b: Leaf): Boolean = {
-      val at1 = (a.at ^ a0) | !(b.at ^ b0)
-      val above1 = (a.above ^ a0) | !(b.above ^ b0)
-      at1 && above1
-    }
-  }
-
-  object OrCalculator extends OrderedBinaryOperator {
-
-    protected def collision(a0:Boolean, a: Leaf, b0: Boolean, b:Leaf) = {
-      val below1 = a0 | b0
-      val at1 = (a.at ^ a0) | (b.at ^ b0)
-      val above1 = (a.above ^ a0) | (b.above ^ b0)
-      leaf(below1 != at1, at1 != above1, a, b)
-    }
-
-    protected def overlapA(a0:Boolean, a: IntervalTrie, b0: Boolean) =
-      if(b0)
-        null
-      else
-        a
-
-    protected def overlapB(a0: Boolean, b0:Boolean, b: IntervalTrie) =
-      if(a0)
-        null
-      else
-        b
-  }
-
-  object XorCalculator extends OrderedBinaryOperator {
-
-    protected def collision(a0:Boolean, a: Leaf, b0: Boolean, b:Leaf) = {
-      val below1 = a0 ^ b0
-      val at1 = (a.at ^ a0) ^ (b.at ^ b0)
-      val above1 = (a.above ^ a0) ^ (b.above ^ b0)
-      leaf(below1 != at1, at1 != above1, a, b)
-    }
-
-    protected def overlapA(a0:Boolean, a: IntervalTrie, b0: Boolean) = a
-
-    protected def overlapB(a0: Boolean, b0:Boolean, b: IntervalTrie) = b
-  }
-
-  object AndCalculator extends OrderedBinaryOperator {
-
-    protected def collision(a0:Boolean, a: Leaf, b0: Boolean, b:Leaf) = {
-      val below1 = a0 & b0
-      val at1 = (a.at ^ a0) & (b.at ^ b0)
-      val above1 = (a.above ^ a0) & (b.above ^ b0)
-      leaf(below1 != at1, at1 != above1, a, b)
-    }
-
-    protected def overlapA(a0:Boolean, a: IntervalTrie, b0: Boolean) =
-      if(b0)
-        a
-      else
-        null
-
-    protected def overlapB(a0: Boolean, b0:Boolean, b: IntervalTrie) =
-      if(a0)
-        b
-      else
-        null
-  }
-
-  /**
-   * An operation that calculates the value before, at or behind a position
-   */
-  sealed abstract class Sampler {
-
-    def apply(a0:Boolean, a: IntervalTrie, value: Long) = op(a0, a, value)
-
-    /**
-     * Method that is invoked when a leaf is found. This allows to customize whether we want at, before or after
-     * @param a0 the value before the leaf
-     * @param a the leaf
-     */
-    protected def onLeaf(a0: Boolean, a: Leaf): Boolean
-
-    private final def op(a0: Boolean, a: IntervalTrie, value: Long): Boolean = a match {
-      case a: Branch =>
-        val prefix = a.prefix
-        val level = a.level
-        if (!hasMatchAt(value, prefix, level)) {
-          // key is either before or after a
-          val branchLevel = levelAbove(prefix, value)
-          if (zeroAt(prefix, branchLevel))
-            a0 ^ a.sign // after
-          else
-            a0 // before
-        } else {
-          // key is within a
-          if (zeroAt(value, level))
-            op(a0, a.left, value)
-          else
-            op(a0 ^ a.left.sign, a.right, value)
-        }
-      case a: Leaf =>
-        if (a.prefix == value)
-          onLeaf(a0, a)
-        else if (unsigned_<(a.prefix, value))
-          a0 ^ a.sign
+  private final def foreachInterval[T:Element, U](a0:Boolean, a:Tree)(f:Interval[T] => U): Unit = {
+    val x = implicitly[Element[T]]
+    import x._
+    def op(b0:Bound[T], a0:Boolean, a:Tree): Bound[T] = a match {
+      case Below(a) =>
+        if(a0)
+          f(Interval.fromBounds(b0, Open(fromLong(a))))
+        Closed(fromLong(a))
+      case Above(a) =>
+        if(a0)
+          f(Interval.fromBounds(b0, Closed(fromLong(a))))
+        Open(fromLong(a))
+      case Both(a) =>
+        if(a0)
+          f(Interval.fromBounds(b0, Open(fromLong(a))))
         else
-          a0
+          f(Interval.point(fromLong(a)))
+        Open(fromLong(a))
+      case a:Branch =>
+        val am = a0 ^ a.left.sign
+        val bm = op(b0, a0, a.left)
+        val b1 = op(bm, am, a.right)
+        b1
       case _ =>
-        a0
+        Unbound()
     }
+    val last = op(Unbound(), a0, a)
+    if(a0 ^ ((a ne null) && a.sign))
+      f(Interval.fromBounds(last, Unbound()))
   }
 
-  object SampleBelow extends Sampler {
+  private def apply[T:Element](below:Boolean, tree:Tree): IntervalTrie[T] =
+    IntervalTrieImpl(below, tree, implicitly[Element[T]])
 
-    protected def onLeaf(a0: Boolean, a: Leaf): Boolean = a0
-  }
+  private final case class IntervalTrieImpl[T](belowAll:Boolean, tree:Tree, implicit val ise:Element[T]) extends IntervalTrie[T] { lhs =>
 
-  object SampleAt extends Sampler {
+    import Tree._
 
-    protected def onLeaf(a0: Boolean, a: Leaf): Boolean = a0 ^ a.at
-  }
+    def aboveAll: Boolean = if(tree eq null) belowAll else belowAll ^ tree.sign
 
-  object SampleAbove extends Sampler {
+    def isEmpty = !belowAll && (tree eq null)
 
-    protected def onLeaf(a0: Boolean, a: Leaf): Boolean = a0 ^ a.above
-  }
+    def isContiguous = if(belowAll) {
+      tree match {
+        case a:Leaf => a.sign
+        case null => true
+        case _ => false
+      }
+    } else {
+      tree match {
+        case _:Leaf => true
+        case Branch(_,_,a:Leaf, b:Leaf) => a.sign & b.sign
+        case null => true
+        case _ => false
+      }
+    }
 
-  def leaf(changeBelow:Boolean, changeAbove:Boolean, a:Leaf, b:Leaf) = {
-    val at = changeBelow
-    val sign = changeBelow ^ changeAbove
-    if(!changeBelow && !changeAbove)
-      null
-    else if(at == a.at && sign == a.sign)
-      a
-    else if(at == b.at && sign == b.sign)
-      b
-    else
-      Leaf(a.prefix, at, sign)
-  }
+    def hull: Interval[T] = {
+      implicit val ops = ise.ops
+      @tailrec
+      def lowerBound(a:Tree) : Bound[T] = a match {
+        case a:Branch => lowerBound(a.left)
+        case Above(x) => Open(ise.fromLong(x))
+        case Below(x) => Closed(ise.fromLong(x))
+        case Both(x) => Closed(ise.fromLong(x))
+      }
+      @tailrec
+      def upperBound(a:Tree) : Bound[T] = a match {
+        case a:Branch => upperBound(a.right)
+        case Both(x) => Closed(ise.fromLong(x))
+        case Above(x) => Closed(ise.fromLong(x))
+        case Below(x) => Open(ise.fromLong(x))
+      }
+      if(isEmpty) {
+        Interval.empty[T]
+      } else {
+        val lower = if(belowAll) Unbound[T] else lowerBound(tree)
+        val upper = if(aboveAll) Unbound[T] else upperBound(tree)
+        Interval.fromBounds(lower, upper)
+      }
+    }
 
-  /**
-   * A leaf.
-   * @param prefix the prefix, which in case of a leaf is identical to the key
-   */
-  final case class Leaf(prefix: Long, at:Boolean, sign:Boolean) extends IntervalTrie {
+    def below(value:T) : Boolean = SampleBelow(belowAll, tree, toPrefix(ise.toLong(value)))
 
-    /**
-     * For a leaf, the prefix is the key
-     */
-    def key = fromPrefix(prefix)
+    def at(value:T) : Boolean = SampleAt(belowAll, tree, toPrefix(ise.toLong(value)))
 
-    /**
-     * This is -1 for leaves, so that the smallest possible branch (level=0) has a bigger level than a leaf
-     */
-    def level = -1.toByte
+    def above(value:T) : Boolean = SampleAbove(belowAll, tree, toPrefix(ise.toLong(value)))
 
-    @inline def above = sign
-  }
+    def apply(value:T) : Boolean = at(value)
 
-  /**
-   * A branch
-   * @param prefix the common prefix of both children
-   * @param level the level of the node. 0..63 for branches. Higher means bigger
-   * @param left the left child
-   * @param right the right child
-   */
-  final case class Branch(prefix : Long, level : Byte, left : IntervalTrie, right : IntervalTrie) extends IntervalTrie {
+    def & (rhs:IntervalTrie[T]) = rhs match {
+      case rhs:IntervalTrieImpl[T] =>
+        IntervalTrie[T](lhs.belowAll & rhs.belowAll, AndCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree))
+    }
 
-    val sign = left.sign ^ right.sign
+    def | (rhs:IntervalTrie[T]) = rhs match {
+      case rhs: IntervalTrieImpl[T] =>
+        IntervalTrie[T](lhs.belowAll | rhs.belowAll, OrCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree))
+    }
 
-    def lr(left:IntervalTrie, right:IntervalTrie) : IntervalTrie = {
-      if(left eq null)
-        right
-      else if(right eq null)
-        left
-      else if((left eq this.left) && (right eq this.right))
-        this
+    def ^ (rhs:IntervalTrie[T]) = rhs match {
+      case rhs: IntervalTrieImpl[T] => IntervalTrie[T](lhs.belowAll ^ rhs.belowAll, XorCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree))
+    }
+
+    def unary_~ = IntervalTrie[T](!belowAll, tree)
+
+    def isSupersetOf(rhs:IntervalTrie[T]) = rhs match {
+      case rhs:IntervalTrieImpl[T] =>
+        SupersetOfCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree)
+    }
+
+    def intersects(rhs:IntervalTrie[T]) = rhs match {
+      case rhs:IntervalTrieImpl[T] =>
+        !DisjointCalculator(lhs.belowAll, lhs.tree, rhs.belowAll, rhs.tree)
+    }
+
+    def isProperSupersetOf(rhs:IntervalTrie[T]) = isSupersetOf(rhs) && (rhs != lhs)
+
+    def intervals = new AbstractTraversable[Interval[T]] {
+      override def foreach[U](f: Interval[T] => U): Unit = foreachInterval(belowAll, tree)(f)
+    }
+
+    def edges = new AbstractTraversable[T] {
+      override def foreach[U](f: T => U): Unit = Tree.foreachEdge(tree)(key => f(ise.fromLong(key)))
+    }
+
+    override def toString = {
+      import ise.ops
+      if (isEmpty)
+        Interval.empty[T].toString
       else
-        copy(left = left, right = right)
+        intervals.map(_.toString).mkString(";")
     }
   }
-//
-//  final def foreachLeaf[U](a0:Boolean, a:IntervalTrie,f : ((Boolean, Leaf)) =>  U) : Unit = a match {
-//    case a:Branch =>
-//      foreachLeaf(a0, a.left, f)
-//      foreachLeaf(a0 ^ a.sign, a.right, f)
-//    case leaf:Leaf =>
-//      f((a0,leaf))
-//    case _ =>
-//  }
 
-  final def foreachEdge[U](a:IntervalTrie)(f : Long =>  U) : Unit = a match {
-    case a:Branch =>
-      foreachEdge(a.left)(f)
-      foreachEdge(a.right)(f)
-    case leaf:Leaf =>
-      f(leaf.key)
-    case _ =>
-  }
-}
-
-private[interval] sealed abstract class IntervalTrie {
-
-  def prefix : Long
-
-  def level : Byte
-
-  def sign: Boolean
 }

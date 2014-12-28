@@ -34,7 +34,7 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
   }
 
   // a test that works by sampling the result at all relevant places and checks consistency with the boolean operation
-  def trinarySampleTest(a:IntervalSeq[Long], b:IntervalSeq[Long], c:IntervalSeq[Long], r:IntervalSet[Long], op:(Boolean, Boolean, Boolean) => Boolean) = {
+  def trinarySampleTest(a:IntervalSeq[Long], b:IntervalSeq[Long], c:IntervalSeq[Long], r:IntervalTrie[Long], op:(Boolean, Boolean, Boolean) => Boolean) = {
     val support = (a.edges ++ b.edges ++ c.edges).toArray.sorted.distinct
     support.forall { value =>
       val sameBefore = r.below(value) === op(a.below(value), b.below(value), c.below(value))

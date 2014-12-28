@@ -2,18 +2,18 @@ package com.rklaehn.interval
 
 import org.scalacheck.{Gen, Arbitrary}
 
-object IntervalSetArbitrary {
+object IntervalTrieArbitrary {
 
-  def makeProfileXor(initial:Boolean, support:Array[Long], kind:Array[Int]) : IntervalSet[Long] = {
+  def makeProfileXor(initial:Boolean, support:Array[Long], kind:Array[Int]) : IntervalTrie[Long] = {
     require(support.length == kind.length)
     require(kind.forall(x => x >= 0 && x <= 2))
-    val r = IntervalSet.constant[Long](initial)
+    val r = IntervalTrie.constant[Long](initial)
     (r /: (support zip kind)) {
-      case (current, (x,k)) => current ^ IntervalSet.fromKind(x,k)
+      case (current, (x,k)) => current ^ IntervalTrie.fromKind(x,k)
     }
   }
 
-  private def randomProfileXor(min: Long, max: Long, count: Int): Gen[IntervalSet[Long]] = {
+  private def randomProfileXor(min: Long, max: Long, count: Int): Gen[IntervalTrie[Long]] = {
     for {
       initial <- Gen.oneOf(true, false)
       edges <- Gen.resize(count, Gen.containerOf[Array, Long](Gen.choose(min, max)))
@@ -23,12 +23,12 @@ object IntervalSetArbitrary {
       makeProfileXor(initial, support, kind)
   }
 
-  private def randomProfileGen(size:Int) = Gen.frequency[IntervalSet[Long]](
-    1 -> IntervalSet.zero[Long],
-    1 -> IntervalSet.one[Long],
+  private def randomProfileGen(size:Int) = Gen.frequency[IntervalTrie[Long]](
+    1 -> IntervalTrie.zero[Long],
+    1 -> IntervalTrie.one[Long],
     15 -> randomProfileXor(0, 100, size),
     15 -> randomProfileXor(Long.MinValue, Long.MaxValue, size)
   )
 
-  val arbitrary = Arbitrary[IntervalSet[Long]](randomProfileGen(3))
+  val arbitrary = Arbitrary[IntervalTrie[Long]](randomProfileGen(3))
 }

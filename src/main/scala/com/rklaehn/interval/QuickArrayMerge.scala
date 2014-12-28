@@ -21,7 +21,9 @@ object QuickArrayMerge {
         high = mid - 1
       }
       else {
+        // scalastyle:off return
         return mid
+        // scalastyle:on return
       }
     }
     -(low + 1)

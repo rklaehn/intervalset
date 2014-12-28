@@ -7,7 +7,7 @@ object IntervalTrieBench extends App {
 
   def makeOnOffProfile(n:Int, offset:Long = 0, stride:Long = 2) = {
     val support = (0 until n).map(_ * stride + offset).toArray
-    IntervalSetArbitrary.makeProfileXor(false, support, Array.fill(support.length)(0))
+    IntervalTrieArbitrary.makeProfileXor(false, support, Array.fill(support.length)(0))
   }
 
   val thyme = Thyme.warmed(verbose = println, warmth = Thyme.HowWarm.BenchOff)

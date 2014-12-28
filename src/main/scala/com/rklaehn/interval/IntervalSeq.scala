@@ -1,3 +1,4 @@
+// scalastyle:off file.size.limit
 package com.rklaehn.interval
 
 import java.util.Arrays
@@ -31,7 +32,9 @@ class IntervalSeq[T] private (
         high = mid - 1
       }
       else {
+        // scalastyle:off return
         return mid
+        // scalastyle:on return
       }
     }
     -(low + 1)
@@ -290,7 +293,9 @@ class IntervalSeq[T] private (
           high = mid - 1
         }
         else {
+          // scalastyle:off return
           return mid
+          // scalastyle:on return
         }
       }
       -(low + 1)

@@ -6,9 +6,9 @@ import spire.algebra.Order
 import spire.math.interval.Closed
 import spire.math._
 
-class IntervalSetTest {
+class IntervalTrieTest {
 
-  import IntervalSet._
+  import IntervalTrie._
 
 //  @Test
 //  def testIntervalUnion() : Unit = {
@@ -52,21 +52,21 @@ class IntervalSetTest {
   @Test(expected = classOf[NumberFormatException])
   def parseLargeIntegerTest(): Unit = {
     val text = "[1000000000000000000000000]"
-    IntervalSet(text)
+    IntervalTrie(text)
   }
 
   @Test
   def predefinedTypesTest(): Unit = {
     def testEdge[T:Element](value:T) : Unit = {
       implicit val order : Order[T] = implicitly[Element[T]].ops
-      assertEquals(IndexedSeq(value), IntervalSet.above(value).edges.toIndexedSeq)
-      assertEquals(Interval.above(value).toString, IntervalSet.above(value).toString)
+      assertEquals(IndexedSeq(value), IntervalTrie.above(value).edges.toIndexedSeq)
+      assertEquals(Interval.above(value).toString, IntervalTrie.above(value).toString)
     }
 
     def testInterval[T:Element](min:T, max:T) : Unit = {
       implicit val ops = implicitly[Element[T]].ops
       val interval = Interval.fromBounds(Closed(min), Closed(max))
-      val intervalSet = IntervalSet(interval)
+      val intervalSet = IntervalTrie(interval)
       assertEquals(IndexedSeq(min,max), intervalSet.edges.toIndexedSeq)
       assertEquals(interval.toString, intervalSet.toString)
     }
@@ -125,47 +125,47 @@ class IntervalSetTest {
 
   @Test(expected = classOf[IllegalArgumentException])
   def doubleRejectsNaNTest(): Unit = {
-    IntervalSet.above(Double.NaN)
+    IntervalTrie.above(Double.NaN)
   }
 
   @Test(expected = classOf[IllegalArgumentException])
   def floatRejectsNaNTest(): Unit = {
-    IntervalSet.above(Float.NaN)
+    IntervalTrie.above(Float.NaN)
   }
 
   @Test
   def atIsSameAsApplyTest(): Unit = {
-    val is = IntervalSet.above(1)
+    val is = IntervalTrie.above(1)
     is.at(1) == is.apply(1)
   }
 
   @Test
   def subsetOfTest(): Unit = {
-    assertTrue(IntervalSet.above(1).isSupersetOf(IntervalSet.above(1)))
-    assertTrue(IntervalSet.atOrAbove(1).isSupersetOf(IntervalSet.above(1)))
-    assertFalse(IntervalSet.above(1).isSupersetOf(IntervalSet.atOrAbove(1)))
+    assertTrue(IntervalTrie.above(1).isSupersetOf(IntervalTrie.above(1)))
+    assertTrue(IntervalTrie.atOrAbove(1).isSupersetOf(IntervalTrie.above(1)))
+    assertFalse(IntervalTrie.above(1).isSupersetOf(IntervalTrie.atOrAbove(1)))
 
-    assertFalse(IntervalSet.above(1).isProperSupersetOf(IntervalSet.above(1)))
-    assertTrue(IntervalSet.atOrAbove(1).isProperSupersetOf(IntervalSet.above(1)))
-    assertFalse(IntervalSet.above(1).isProperSupersetOf(IntervalSet.atOrAbove(1)))
+    assertFalse(IntervalTrie.above(1).isProperSupersetOf(IntervalTrie.above(1)))
+    assertTrue(IntervalTrie.atOrAbove(1).isProperSupersetOf(IntervalTrie.above(1)))
+    assertFalse(IntervalTrie.above(1).isProperSupersetOf(IntervalTrie.atOrAbove(1)))
   }
 
   @Test(expected = classOf[IllegalArgumentException])
   def concatExceptionTest(): Unit = {
-    IntervalTrie.concat(IntervalTrie.Leaf(0,false, false), IntervalTrie.Leaf(0,false, false))
+    Tree.concat(Tree.Leaf(0,false, false), Tree.Leaf(0,false, false))
   }
 
   @Test
   def algebraTest(): Unit = {
-    val algebra = IntervalSetAlgebra.booleanAlgebra[Long]
-    val a = IntervalSet.above(1L)
-    val b = IntervalSet.below(1L)
+    val algebra = IntervalTrieAlgebra.booleanAlgebra[Long]
+    val a = IntervalTrie.above(1L)
+    val b = IntervalTrie.below(1L)
     assertEquals(a ^ b, algebra.xor(a, b))
   }
 
   @Test
   def charAdditiveMonoidTest(): Unit = {
-    import IntervalSet.CharElement.ops._
+    import IntervalTrie.CharElement.ops._
     assertEquals(0, zero.toInt)
     assertEquals('a', plus('a', zero))
   }
