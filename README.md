@@ -4,7 +4,7 @@ Efficient immutable interval sets
 
 [![Build Status](https://travis-ci.org/rklaehn/intervalset.png)](https://travis-ci.org/rklaehn/intervalset)
 
-This repository contains two data structures for sets of *non-overlapping* intervals.
+This repository contains two data structures for sets of *non-overlapping* intervals. Boundaries are either inclusive or exclusive, so (0..2] is different to [1..2]. 
 
 ## IntervalTrie
 
