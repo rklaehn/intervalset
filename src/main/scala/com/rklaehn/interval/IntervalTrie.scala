@@ -8,7 +8,7 @@ import spire.math._
 import scala.annotation.tailrec
 import scala.collection.AbstractTraversable
 
-sealed abstract class IntervalTrie[T] extends AbstractIntervalSet[T, IntervalTrie[T]]
+sealed abstract class IntervalTrie[T] extends IntervalSet[T, IntervalTrie[T]]
 
 object IntervalTrie {
 

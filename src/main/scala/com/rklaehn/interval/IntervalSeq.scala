@@ -14,7 +14,7 @@ class IntervalSeq[T] private (
     val belowAll: Boolean,
     private val values: Array[T],
     private val kinds: Array[Byte],
-    private implicit val order: Order[T]) extends AbstractIntervalSet[T, IntervalSeq[T]] { lhs =>
+    private implicit val order: Order[T]) extends IntervalSet[T, IntervalSeq[T]] { lhs =>
 
   import IntervalSeq._
 

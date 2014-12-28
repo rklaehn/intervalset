@@ -2,7 +2,7 @@ package com.rklaehn.interval
 
 import spire.math.Interval
 
-abstract class AbstractIntervalSet[T, S <: AbstractIntervalSet[T, _]] extends (T => Boolean) {
+abstract class IntervalSet[T, S <: IntervalSet[T, _]] extends (T => Boolean) {
 
   def isEmpty: Boolean
 
@@ -38,3 +38,5 @@ abstract class AbstractIntervalSet[T, S <: AbstractIntervalSet[T, _]] extends (T
 
   def edges: Traversable[T]
 }
+
+// abstract class IntervalSetFactory[T, S <: IntervalSet[T, _]]
