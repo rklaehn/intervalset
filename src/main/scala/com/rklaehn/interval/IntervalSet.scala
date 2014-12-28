@@ -38,5 +38,3 @@ abstract class IntervalSet[T, S <: IntervalSet[T, _]] extends (T => Boolean) {
 
   def edges: Traversable[T]
 }
-
-// abstract class IntervalSetFactory[T, S <: IntervalSet[T, _]]
