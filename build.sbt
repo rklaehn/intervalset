@@ -8,7 +8,7 @@ version := "0.1-SNAPSHOT"
 
 libraryDependencies += "org.spire-math" %% "spire" % "0.9.0"
 
-libraryDependencies += "org.spire-math" %% "spire-scalacheck-binding" % "0.8.2" % "test"
+libraryDependencies += "org.spire-math" %% "spire-scalacheck-binding" % "0.9.0" % "test"
 
 libraryDependencies += "junit" % "junit" % "4.11" % "test"
 
