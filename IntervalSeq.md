@@ -15,6 +15,14 @@ An interval seq consists of a Boolean value *belowAll* giving the value at negat
 
 Redundant boundaries are never stored, so a sequence [(-1.0, K01), (0.0, K11), (1.0, K10)] would be illegal because the middle boundary is redundant.
 
+### Examples
+
+```
+(-∞, 0.0] would be encoded as belowAll = true, values = Array(0.0), kinds = Array(K10)
+(-1.0, 1.0) would be encoded as belowAll = false, values = Array(-1.0, 1.0), kinds = Array(K01, K00)
+(2, ∞) would be encoded as belowAll = false, values = Array(2.0), kinds = Array(K01)
+```
+
 *Note that for reasons of efficiency, kinds and values are stored in two separate arrays in the actual implementation.*
 
 ## Usage
