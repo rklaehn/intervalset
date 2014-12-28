@@ -1,4 +1,3 @@
-// scalastyle:off file.size.limit
 package com.rklaehn.interval
 
 import java.util.Arrays
@@ -438,7 +437,8 @@ object IntervalSeq {
   private def wrong : Nothing = throw new IllegalStateException("")
   // $COVERAGE-ON$
 
-  private def singleton[T: Order](belowAll: Boolean, value: T, kind: Byte): IntervalSeq[T] = new IntervalSeq(belowAll, Array(value)(classTag), Array(kind), implicitly[Order[T]])
+  private def singleton[T: Order](belowAll: Boolean, value: T, kind: Byte): IntervalSeq[T] =
+    new IntervalSeq(belowAll, Array(value)(classTag), Array(kind), implicitly[Order[T]])
 
   private val K00 = 0.toByte
 
