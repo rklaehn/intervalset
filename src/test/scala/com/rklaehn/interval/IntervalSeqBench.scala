@@ -3,11 +3,11 @@ package com.rklaehn.interval
 import ichi.bench._
 import spire.syntax.all._
 
-object IntervalTrieBench extends App {
+object IntervalSeqBench extends App {
 
   def makeOnOffProfile(n:Int, offset:Long = 0, stride:Long = 2) = {
     val support = (0 until n).map(_ * stride + offset).toArray
-    IntervalSetArbitrary.makeProfileXor(false, support, Array.fill(support.length)(0))
+    IntervalSeqArbitrary.makeProfileXor(false, support, Array.fill(support.length)(0))
   }
 
   val thyme = Thyme.warmed(verbose = println, warmth = Thyme.HowWarm.BenchOff)

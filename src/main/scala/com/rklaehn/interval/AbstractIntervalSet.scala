@@ -9,7 +9,7 @@ import spire.math.interval.{Bound, Open, Closed, Unbound}
 import scala.collection.AbstractTraversable
 import scala.reflect.ClassTag
 
-abstract class IntervalSeq[T, S <: IntervalSeq[T,_]] extends (T => Boolean) {
+abstract class AbstractIntervalSet[T, S <: AbstractIntervalSet[T,_]] extends (T => Boolean) {
 
   def isEmpty: Boolean
 
@@ -38,7 +38,7 @@ abstract class IntervalSeq[T, S <: IntervalSeq[T,_]] extends (T => Boolean) {
 
 object IntervalSeq {
 
-  private def singleton[T: Order](belowAll: Boolean, value: T, kind: Byte): SeqBasedIntervalSet[T] = SeqBasedIntervalSet(belowAll, Array(value)(classTag), Array(kind), implicitly[Order[T]])
+  private def singleton[T: Order](belowAll: Boolean, value: T, kind: Byte): IntervalSeq[T] = IntervalSeq(belowAll, Array(value)(classTag), Array(kind), implicitly[Order[T]])
 
   def atOrAbove[T: Order](value: T) = singleton(false, value, K11)
 
@@ -52,10 +52,12 @@ object IntervalSeq {
 
   def hole[T: Order](value: T) = singleton(true, value, K01)
 
-  def zero[T: Order]: SeqBasedIntervalSet[T] = SeqBasedIntervalSet[T](false, Array()(classTag), Array(), implicitly[Order[T]])
+  def zero[T: Order]: IntervalSeq[T] = IntervalSeq[T](false, Array()(classTag), Array(), implicitly[Order[T]])
 
-  def one[T: Order]: SeqBasedIntervalSet[T] = SeqBasedIntervalSet[T](true, Array()(classTag), Array(), implicitly[Order[T]])
+  def one[T: Order]: IntervalSeq[T] = IntervalSeq[T](true, Array()(classTag), Array(), implicitly[Order[T]])
 
+  def constant[T: Order](value: Boolean) : IntervalSeq[T] = IntervalSeq[T](value, Array()(classTag), Array(), implicitly[Order[T]])
+  
   val K00 = 0.toByte
   val K10 = 1.toByte
   val K01 = 2.toByte
@@ -65,14 +67,14 @@ object IntervalSeq {
 
   def negateKind(kind: Byte) = ((~kind) & 3).toByte
 
-  def kindToString(kind:Byte) = ("0" + kind.toBinaryString).takeRight(2).reverse
+  private def kindToString(kind:Byte) = ("0" + kind.toBinaryString).takeRight(2).reverse
 
-  def valueAt(kind: Byte): Boolean = (kind & 1) != 0
+  private def valueAt(kind: Byte): Boolean = (kind & 1) != 0
 
-  def valueAbove(kind: Byte): Boolean = (kind & 2) != 0
+  private def valueAbove(kind: Byte): Boolean = (kind & 2) != 0
 }
 
-case class SeqBasedIntervalSet[T](belowAll: Boolean, values: Array[T], kinds: Array[Byte], order: Order[T]) extends IntervalSeq[T, SeqBasedIntervalSet[T]] with Comparator[T] { lhs =>
+case class IntervalSeq[T](belowAll: Boolean, values: Array[T], kinds: Array[Byte], order: Order[T]) extends AbstractIntervalSet[T, IntervalSeq[T]] with Comparator[T] { lhs =>
   implicit def implicitOrder = order
   
   import IntervalSeq._
@@ -123,13 +125,13 @@ case class SeqBasedIntervalSet[T](belowAll: Boolean, values: Array[T], kinds: Ar
 
   def aboveAll = if (values.isEmpty) belowAll else valueAbove(kinds.last)
 
-  def unary_~ :SeqBasedIntervalSet[T] = copy(belowAll = !belowAll, kinds = kinds.map(negateKind))
+  def unary_~ :IntervalSeq[T] = copy(belowAll = !belowAll, kinds = negateKinds(kinds))
 
-  def |(rhs:SeqBasedIntervalSet[T]) = new Or[T](lhs, rhs).result
+  def |(rhs:IntervalSeq[T]) = new Or[T](lhs, rhs).result
 
-  def &(rhs:SeqBasedIntervalSet[T]) = new And[T](lhs, rhs).result
+  def &(rhs:IntervalSeq[T]) = new And[T](lhs, rhs).result
 
-  def ^(rhs:SeqBasedIntervalSet[T]) = new Xor[T](lhs, rhs).result
+  def ^(rhs:IntervalSeq[T]) = new Xor[T](lhs, rhs).result
 
   override def toString = {
 //    val vs = values.mkString("[",",","]")
@@ -146,7 +148,7 @@ case class SeqBasedIntervalSet[T](belowAll: Boolean, values: Array[T], kinds: Ar
   }
 
   override def equals(rhs:Any) = rhs match {
-    case rhs:SeqBasedIntervalSet[_] =>
+    case rhs:IntervalSeq[_] =>
       lhs.belowAll == rhs.belowAll &&
         Arrays.equals(lhs.kinds, rhs.kinds) &&
         Arrays.equals(values.asInstanceOf[Array[AnyRef]], rhs.values.asInstanceOf[Array[AnyRef]])
@@ -193,13 +195,23 @@ case class SeqBasedIntervalSet[T](belowAll: Boolean, values: Array[T], kinds: Ar
     for(prev <- prev)
       f(Interval.fromBounds(prev, Unbound()))
   }
+
+  private def negateKinds(kinds:Array[Byte]): Array[Byte] = {
+    var i = 0
+    val result = new Array[Byte](kinds.length)
+    while(i < kinds.length) {
+      result(i) = negateKind(kinds(i))
+      i += 1
+    }
+    result
+  }
 }
 
 private abstract class MergeOperation[T] {
   import IntervalSeq._
   implicit val ct = classTag[T]
-  def lhs:SeqBasedIntervalSet[T]
-  def rhs:SeqBasedIntervalSet[T]
+  def lhs:IntervalSeq[T]
+  def rhs:IntervalSeq[T]
   val a0 = lhs.belowAll
   val b0 = rhs.belowAll
   val a = lhs.values
@@ -246,10 +258,10 @@ private abstract class MergeOperation[T] {
 
   def op(a:Boolean, b:Boolean) : Boolean
 
-  def op(a:Byte, b:Byte) : Byte
+  def op(a:Byte, b:Byte) : Int
 
   def collision(ai: Int, bi: Int): Unit = {
-    val kind = op(ak(ai), bk(bi))
+    val kind = op(ak(ai), bk(bi)).toByte
     val below = rBelow
     if((below && kind != K11) || (!below && kind != K00)) {
       rk(ri) = kind
@@ -321,20 +333,20 @@ private abstract class MergeOperation[T] {
 
   merge0(0, a.length, 0, b.length)
 
-  def result : SeqBasedIntervalSet[T] = {
+  def result : IntervalSeq[T] = {
     if(ri == r.length)
-      SeqBasedIntervalSet(r0, r, rk, order)
+      IntervalSeq(r0, r, rk, order)
     else
-      SeqBasedIntervalSet(r0, r.take(ri), rk.take(ri), order)
+      IntervalSeq(r0, r.take(ri), rk.take(ri), order)
   }
 }
 
-private class And[T](val lhs:SeqBasedIntervalSet[T], val rhs:SeqBasedIntervalSet[T]) extends MergeOperation[T] {
+private class And[T](val lhs:IntervalSeq[T], val rhs:IntervalSeq[T]) extends MergeOperation[T] {
   import IntervalSeq._
 
   override def op(a: Boolean, b: Boolean): Boolean = a & b
 
-  override def op(a: Byte, b: Byte): Byte = (a & b).toByte
+  override def op(a: Byte, b: Byte): Int = (a & b)
 
   override def fromA(a0: Int, a1: Int, b: Boolean): Unit =
     if(b)
@@ -345,11 +357,11 @@ private class And[T](val lhs:SeqBasedIntervalSet[T], val rhs:SeqBasedIntervalSet
       copyB(b0,b1)
 }
 
-private class Or[T](val lhs:SeqBasedIntervalSet[T], val rhs:SeqBasedIntervalSet[T]) extends MergeOperation[T] {
+private class Or[T](val lhs:IntervalSeq[T], val rhs:IntervalSeq[T]) extends MergeOperation[T] {
 
   override def op(a: Boolean, b: Boolean): Boolean = a | b
 
-  override def op(a: Byte, b: Byte): Byte = (a | b).toByte
+  override def op(a: Byte, b: Byte): Int = (a | b)
 
   override def fromA(a0: Int, a1: Int, b: Boolean): Unit =
     if(!b)
@@ -360,11 +372,11 @@ private class Or[T](val lhs:SeqBasedIntervalSet[T], val rhs:SeqBasedIntervalSet[
       copyB(b0,b1)
 }
 
-private class Xor[T](val lhs:SeqBasedIntervalSet[T], val rhs:SeqBasedIntervalSet[T]) extends MergeOperation[T] {
+private class Xor[T](val lhs:IntervalSeq[T], val rhs:IntervalSeq[T]) extends MergeOperation[T] {
 
   override def op(a: Boolean, b: Boolean): Boolean = a ^ b
 
-  override def op(a: Byte, b: Byte): Byte = (a ^ b).toByte
+  override def op(a: Byte, b: Byte): Int = (a ^ b)
 
   override def fromA(a0: Int, a1: Int, b: Boolean): Unit =
     if(!b)
