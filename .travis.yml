@@ -7,4 +7,3 @@ script:
 branches:
   only:
     - master
-    - generic
