@@ -8,40 +8,7 @@ import spire.math._
 import scala.annotation.tailrec
 import scala.collection.AbstractTraversable
 
-sealed abstract class IntervalSet[T] extends (T => Boolean) {
-
-  def isEmpty: Boolean
-
-  def isContiguous: Boolean
-
-  def hull: Interval[T]
-
-  def below(value:T) : Boolean
-
-  def at(value:T) : Boolean
-
-  def above(value:T) : Boolean
-
-  def apply(value:T) : Boolean
-
-  def &(rhs:IntervalSet[T]): IntervalSet[T]
-
-  def |(rhs:IntervalSet[T]): IntervalSet[T]
-
-  def ^(rhs:IntervalSet[T]): IntervalSet[T]
-
-  def unary_~ : IntervalSet[T]
-
-  def intervals: Traversable[Interval[T]]
-
-  def intersects(rhs:IntervalSet[T]): Boolean
-
-  def isSupersetOf(rhs:IntervalSet[T]): Boolean
-
-  def isProperSupersetOf(rhs:IntervalSet[T]): Boolean
-
-  private[interval] def edges:Traversable[T]
-}
+sealed abstract class IntervalSet[T] extends AbstractIntervalSet[T, IntervalSet[T]]
 
 object IntervalSet {
 

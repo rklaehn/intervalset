@@ -17,7 +17,6 @@ object IntervalSeqBench extends App {
     println(s"Full traversal benchmark (n=$n)")
     val a = makeOnOffProfile(n, offset = 0, stride = 2)
     val b = makeOnOffProfile(n, offset = 1, stride = 2)
-
     thyme.pbenchWarm(thyme.Warm(a | b), title = "a | b")
     thyme.pbenchWarm(thyme.Warm(a & b), title = "a & b")
     thyme.pbenchWarm(thyme.Warm(a ^ b), title = "a ^ b")
@@ -35,6 +34,7 @@ object IntervalSeqBench extends App {
     thyme.pbenchWarm(thyme.Warm(a ^ b), title = "a ^ b")
   }
 
-  fullTraversalTest(100000)
-  cutoffTest(100000)
+  thyme.pbenchWarm(thyme.Warm(makeOnOffProfile(10000, offset = 0, stride = 2)), title = "create")
+  fullTraversalTest(10000)
+  cutoffTest(10000)
 }

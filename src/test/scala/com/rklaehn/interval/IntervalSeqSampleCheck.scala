@@ -2,6 +2,7 @@ package com.rklaehn.interval
 
 import org.scalacheck.Properties
 import org.scalacheck.Prop._
+import spire.math.Rational
 import spire.syntax.all._
 import spire.std.any._
 
@@ -59,8 +60,11 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
     binarySampleTest(a, b, a ^ b, _ ^ _)
   }
 
-  /*
-  property("toStringParse") = forAll { a: IntervalSeq[Long] =>
+  property("toStringParse") = forAll { a0: IntervalSeq[Long] =>
+    // first convert the interval of long to an interval of rationals, since that is what parse returns
+    val rationalIntervals = a0.intervals.map(_.mapBounds(Rational.apply))
+    val a : IntervalSeq[Rational] = (IntervalSeq.zero[Rational] /: rationalIntervals)(_ | IntervalSeq(_))
+    // then do the roundtrip test like with IntervalSet
     val aText = a.toString
     val b = IntervalSeq(aText)
     a == b
@@ -71,10 +75,10 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
   }
 
   property("hull") = forAll { a: IntervalSeq[Long] =>
-    val hullSet = IntervalSet(a.hull)
+    val hullSet = IntervalSeq(a.hull)
     val outside = ~hullSet
-    val nothingOutside = (a & outside) == IntervalSet.zero[Long]
-    val allInside = a.intervals.forall(i => hullSet.isSupersetOf(IntervalSet(i)))
+    val nothingOutside = (a & outside) == IntervalSeq.zero[Long]
+    val allInside = a.intervals.forall(i => hullSet.isSupersetOf(IntervalSeq(i)))
     nothingOutside & allInside
   }
 
@@ -97,14 +101,13 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
   }
 
   property("isSupersetOf") = forAll { (a: IntervalSeq[Long], x: Long) =>
-    val b = a & IntervalSet.atOrAbove(x)
+    val b = a & IntervalSeq.atOrAbove(x)
     a isSupersetOf b
   }
 
   property("disjoint") = forAll { (s: IntervalSeq[Long], x: Long) =>
-    val a = s & IntervalSet.below(x)
-    val b = s & IntervalSet.atOrAbove(x)
+    val a = s & IntervalSeq.below(x)
+    val b = s & IntervalSeq.atOrAbove(x)
     !(a intersects b)
   }
-  */
 }
