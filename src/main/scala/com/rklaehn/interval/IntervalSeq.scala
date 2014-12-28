@@ -139,13 +139,17 @@ class IntervalSeq[T] private (
     case K01 => Open(values(i))
     case K11 => Closed(values(i))
     case K10 => Closed(values(i))
+    // $COVERAGE-OFF$
     case _ => wrong
+    // $COVERAGE-ON$
   }
 
   private[this] def upperBound(i:Int) = kinds(i) match {
     case K10 => Closed(values(i))
     case K00 => Open(values(i))
+    // $COVERAGE-OFF$
     case _ => wrong
+    // $COVERAGE-ON$
   }
 
   def hull: Interval[T] = {
@@ -188,9 +192,9 @@ class IntervalSeq[T] private (
           Some(Closed(vi))
         case (K01, None) =>
           Some(Open(vi))
-        case (_, prev) =>
-          // if we get here, we either have an invalid kind or a redundant bound
-          prev
+        // $COVERAGE-OFF$
+        case _ => wrong
+        // $COVERAGE-ON$
       }
     }
     for(prev <- prev)
@@ -425,7 +429,9 @@ object IntervalSeq {
   private def fromTo[T: Order](a:T, ak:Byte, b:T, bk:Byte) =
     new IntervalSeq[T](false, Array(a,b)(classTag), Array(ak,bk), implicitly[Order[T]])
 
+  // $COVERAGE-OFF$
   private def wrong : Nothing = throw new IllegalStateException("")
+  // $COVERAGE-ON$
 
   private def singleton[T: Order](belowAll: Boolean, value: T, kind: Byte): IntervalSeq[T] = new IntervalSeq(belowAll, Array(value)(classTag), Array(kind), implicitly[Order[T]])
 
@@ -441,7 +447,7 @@ object IntervalSeq {
 
   private def negateKind(kind: Byte) = ((~kind) & 3).toByte
 
-  private def kindToString(kind:Byte) = ("0" + kind.toBinaryString).takeRight(2).reverse
+//  private def kindToString(kind:Byte) = ("0" + kind.toBinaryString).takeRight(2).reverse
 
   private def valueAt(kind: Byte): Boolean = (kind & 1) != 0
 

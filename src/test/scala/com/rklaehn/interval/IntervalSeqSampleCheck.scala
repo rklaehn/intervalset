@@ -110,4 +110,8 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
     val b = s & IntervalSeq.atOrAbove(x)
     !(a intersects b)
   }
+
+  property("equals/hashCode") = forAll { (a: IntervalSeq[Long], b: IntervalSeq[Long]) =>
+    if(a==b) a.hashCode == b.hashCode else true
+  }
 }
