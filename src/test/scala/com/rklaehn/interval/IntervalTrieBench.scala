@@ -35,7 +35,8 @@ object IntervalTrieBench extends App {
     thyme.pbenchWarm(thyme.Warm(a ^ b), title = "a ^ b")
   }
 
-  thyme.pbenchWarm(thyme.Warm(makeOnOffProfile(10000, offset = 0, stride = 2)), title = "create")
-  fullTraversalTest(10000)
-  cutoffTest(10000)
+  val n = 100000
+  // thyme.pbenchWarm(thyme.Warm(makeOnOffProfile(n, offset = 0, stride = 2)), title = s"create $n")
+  fullTraversalTest(n)
+  cutoffTest(n)
 }
