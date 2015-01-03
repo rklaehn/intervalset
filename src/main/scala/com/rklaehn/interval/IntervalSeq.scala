@@ -10,7 +10,7 @@ import scala.annotation.tailrec
 import scala.collection.{AbstractIterator, AbstractTraversable}
 import scala.reflect.ClassTag
 
-class IntervalSeq[T] private (
+final class IntervalSeq[T] private (
     val belowAll: Boolean,
     private val values: Array[T],
     private val kinds: Array[Byte],
@@ -142,17 +142,13 @@ class IntervalSeq[T] private (
     case K01 => Open(values(i))
     case K11 => Closed(values(i))
     case K10 => Closed(values(i))
-    // $COVERAGE-OFF$
     case _ => wrong
-    // $COVERAGE-ON$
   }
 
   private[this] def upperBound(i:Int) = kinds(i) match {
     case K10 => Closed(values(i))
     case K00 => Open(values(i))
-    // $COVERAGE-OFF$
     case _ => wrong
-    // $COVERAGE-ON$
   }
 
   def hull: Interval[T] = {
@@ -205,6 +201,8 @@ class IntervalSeq[T] private (
     for(prev <- prev)
       f(Interval.fromBounds(prev, Unbound()))
   }
+
+  private[interval] def kindsAccessor = kinds
 }
 
 object IntervalSeq {
@@ -251,9 +249,7 @@ object IntervalSeq {
   private def fromTo[T: Order](a:T, ak:Byte, b:T, bk:Byte) =
     new IntervalSeq[T](false, Array(a,b)(classTag), Array(ak,bk), implicitly[Order[T]])
 
-  // $COVERAGE-OFF$
   private def wrong : Nothing = throw new IllegalStateException("")
-  // $COVERAGE-ON$
 
   private def singleton[T: Order](belowAll: Boolean, value: T, kind: Byte): IntervalSeq[T] =
     new IntervalSeq(belowAll, Array(value)(classTag), Array(kind), implicitly[Order[T]])
@@ -621,9 +617,7 @@ object IntervalSeq {
           case K01 =>
             result = null
             lower = Open(value)
-          // $COVERAGE-OFF$
           case _ => wrong
-          // $COVERAGE-ON$
         } else kind match {
           case K01 =>
             val upper = Open(value)
@@ -637,9 +631,7 @@ object IntervalSeq {
             val upper = Closed(value)
             result = Interval.fromBounds[T](lower, upper)
             lower = null
-          // $COVERAGE-OFF$
           case _ => wrong
-          // $COVERAGE-ON$
         }
       } else if (lower ne null) {
         result = Interval.fromBounds(lower, Unbound())

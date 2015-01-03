@@ -85,4 +85,32 @@ class IntervalSeqTest {
     val it = all.intervalIterator
     it.next()
   }
+
+  @Test(expected = classOf[IllegalStateException])
+  def wrongStateHullTest1(): Unit = {
+    val t = IntervalSeq.above(1)
+    t.kindsAccessor(0) = 9
+    t.hull
+  }
+
+  @Test(expected = classOf[IllegalStateException])
+  def wrongStateHullTest2(): Unit = {
+    val t = IntervalSeq.below(1)
+    t.kindsAccessor(0) = 9
+    t.hull
+  }
+
+  @Test(expected = classOf[IllegalStateException])
+  def wrongStateIteratorTest1(): Unit = {
+    val t = IntervalSeq.above(1)
+    t.kindsAccessor(0) = 9
+    t.intervalIterator.next()
+  }
+
+  @Test(expected = classOf[IllegalStateException])
+  def wrongStateIteratorTest2(): Unit = {
+    val t = IntervalSeq.below(1)
+    t.kindsAccessor(0) = 9
+    t.intervalIterator.next()
+  }
 }
