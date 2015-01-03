@@ -1,5 +1,6 @@
 package com.rklaehn.interval
 
+import com.rklaehn.interval.IntervalTrieSampleCheck._
 import org.scalacheck.Properties
 import org.scalacheck.Prop._
 import spire.math.Rational
@@ -113,5 +114,9 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
 
   property("equals/hashCode") = forAll { (a: IntervalSeq[Long], b: IntervalSeq[Long]) =>
     if(a==b) a.hashCode == b.hashCode else true
+  }
+
+  property("iterator") = forAll { a: IntervalSeq[Long] =>
+    a.intervalIterator.toIndexedSeq == a.intervals.toIndexedSeq
   }
 }

@@ -62,7 +62,7 @@ private[interval] object Tree {
       Branch(p,level,l,r)
 
   // $COVERAGE-OFF$
-  private def unreachable : Nothing = throw new NotImplementedError("You should never get here")
+  private[interval] def unreachable : Nothing = throw new NotImplementedError("You should never get here")
   // $COVERAGE-ON$
 
   sealed abstract class BooleanBinaryOperator {
@@ -551,24 +551,6 @@ private[interval] object Tree {
       else
         copy(left = left, right = right)
     }
-  }
-//
-//  final def foreachLeaf[U](a0:Boolean, a:IntervalTrie,f : ((Boolean, Leaf)) =>  U) : Unit = a match {
-//    case a:Branch =>
-//      foreachLeaf(a0, a.left, f)
-//      foreachLeaf(a0 ^ a.sign, a.right, f)
-//    case leaf:Leaf =>
-//      f((a0,leaf))
-//    case _ =>
-//  }
-
-  final def foreachEdge[U](a:Tree)(f : Long =>  U) : Unit = a match {
-    case a:Branch =>
-      foreachEdge(a.left)(f)
-      foreachEdge(a.right)(f)
-    case leaf:Leaf =>
-      f(leaf.key)
-    case _ =>
   }
 }
 

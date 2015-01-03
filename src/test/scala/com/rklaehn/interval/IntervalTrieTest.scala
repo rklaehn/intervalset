@@ -169,4 +169,11 @@ class IntervalTrieTest {
     assertEquals(0, zero.toInt)
     assertEquals('a', plus('a', zero))
   }
+
+  @Test(expected = classOf[NoSuchElementException])
+  def iteratorAfterEndTest(): Unit = {
+    val all = IntervalTrie.empty[Int]
+    val it = all.intervalIterator
+    it.next()
+  }
 }

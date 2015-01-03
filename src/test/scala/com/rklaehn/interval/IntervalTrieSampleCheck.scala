@@ -105,4 +105,8 @@ object IntervalTrieSampleCheck extends Properties("IntervalSet.Sample") {
     val b = s & IntervalTrie.atOrAbove(x)
     !(a intersects b)
   }
+
+  property("iterator") = forAll { a: IntervalTrie[Long] =>
+    a.intervalIterator.toIndexedSeq == a.intervals.toIndexedSeq
+  }
 }

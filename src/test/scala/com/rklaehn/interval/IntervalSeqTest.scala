@@ -78,4 +78,11 @@ class IntervalSeqTest {
     val b = IntervalSeq.below(1L)
     assertEquals(a ^ b, algebra.xor(a, b))
   }
+
+  @Test(expected = classOf[NoSuchElementException])
+  def iteratorAfterEndTest(): Unit = {
+    val all = IntervalSeq.empty[Int]
+    val it = all.intervalIterator
+    it.next()
+  }
 }

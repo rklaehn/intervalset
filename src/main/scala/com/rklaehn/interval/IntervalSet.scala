@@ -36,5 +36,7 @@ abstract class IntervalSet[T, S <: IntervalSet[T, _]] extends (T => Boolean) {
 
   def intervals: Traversable[Interval[T]]
 
-  def edges: Traversable[T]
+  def edges: Iterable[T]
+
+  def intervalIterator: Iterator[Interval[T]]
 }

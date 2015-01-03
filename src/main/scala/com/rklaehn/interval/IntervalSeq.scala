@@ -6,7 +6,8 @@ import spire.algebra.Order
 import spire.math.{Rational, Interval}
 import spire.math.interval._
 
-import scala.collection.AbstractTraversable
+import scala.annotation.tailrec
+import scala.collection.{AbstractIterator, AbstractTraversable}
 import scala.reflect.ClassTag
 
 class IntervalSeq[T] private (
@@ -171,6 +172,8 @@ class IntervalSeq[T] private (
   def intervals = new AbstractTraversable[Interval[T]] {
     override def foreach[U](f: (Interval[T]) => U): Unit = foreachInterval(f)
   }
+
+  def intervalIterator: Iterator[Interval[T]] = new IntervalIterator[T](lhs)
 
   private def foreachInterval[U](f:Interval[T] => U) : Unit = {
     var prev: Option[Bound[T]] = if(belowAll) Some(Unbound()) else None
@@ -590,5 +593,72 @@ object IntervalSeq {
     override def fromA(a0: Int, a1: Int, b: Boolean): Boolean = !b
 
     override def fromB(a: Boolean, b0: Int, b1: Int): Boolean = !a
+  }
+
+  private final class IntervalIterator[T:Order](s: IntervalSeq[T]) extends AbstractIterator[Interval[T]] {
+
+    private[this] val values = s.values
+
+    private[this] val kinds = s.kinds
+
+    private[this] var lower: Bound[T] = if (s.belowAll) Unbound() else null
+
+    private[this] var i = 0
+
+    private[this] def nextInterval() = {
+      var result: Interval[T] = null
+      if (i < kinds.length) {
+        val kind = kinds(i)
+        val value = values(i)
+        i += 1
+        if (lower eq null) kind match {
+          case K10 =>
+            result = Interval.point(value)
+            lower = null
+          case K11 =>
+            result = null
+            lower = Closed(value)
+          case K01 =>
+            result = null
+            lower = Open(value)
+          // $COVERAGE-OFF$
+          case _ => wrong
+          // $COVERAGE-ON$
+        } else kind match {
+          case K01 =>
+            val upper = Open(value)
+            result = Interval.fromBounds[T](lower, upper)
+            lower = upper
+          case K00 =>
+            val upper = Open(value)
+            result = Interval.fromBounds[T](lower, upper)
+            lower = null
+          case K10 =>
+            val upper = Closed(value)
+            result = Interval.fromBounds[T](lower, upper)
+            lower = null
+          // $COVERAGE-OFF$
+          case _ => wrong
+          // $COVERAGE-ON$
+        }
+      } else if (lower ne null) {
+        result = Interval.fromBounds(lower, Unbound())
+        lower = null
+      } else {
+        Iterator.empty.next()
+      }
+      result
+    }
+
+    def hasNext = (i < kinds.length) || (lower ne null)
+
+    @tailrec
+    override def next(): Interval[T] = {
+      val result = nextInterval()
+      if (result ne null)
+        result
+      else
+        next()
+    }
   }
 }

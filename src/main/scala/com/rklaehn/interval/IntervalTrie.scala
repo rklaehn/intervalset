@@ -6,7 +6,7 @@ import spire.math.interval._
 import spire.math._
 
 import scala.annotation.tailrec
-import scala.collection.AbstractTraversable
+import scala.collection.{AbstractIterable, AbstractIterator, AbstractTraversable}
 
 sealed abstract class IntervalTrie[T] extends IntervalSet[T, IntervalTrie[T]]
 
@@ -266,6 +266,109 @@ object IntervalTrie {
       f(Interval.fromBounds(last, Unbound()))
   }
 
+  private abstract class TreeIterator[T](a:Tree) extends AbstractIterator[T] {
+
+    var index = 0
+    var buffer = new Array[Tree](65)
+
+    def pop() = {
+      index -= 1
+      buffer(index)
+    }
+
+    def push(x: Tree) {
+      buffer(index) = x
+      index += 1
+    }
+
+    if(a ne null)
+      push(a)
+
+    def hasNextLeaf = index != 0
+
+    final def nextLeaf(): Leaf = pop() match {
+      case b:Branch =>
+        push(b.right)
+        push(b.left)
+        nextLeaf()
+      case l:Leaf => l
+      // $COVERAGE-OFF$
+      case _ => unreachable
+      // $COVERAGE-ON$
+    }
+  }
+
+  private final class EdgeIterator[T:Element](tree:Tree) extends TreeIterator[T](tree) {
+    private val element = implicitly[Element[T]]
+
+    def hasNext = hasNextLeaf
+
+    def next = element.fromLong(nextLeaf.key)
+  }
+
+  private final class IntervalIterator[T:Element](e:IntervalTrieImpl[T]) extends TreeIterator[Interval[T]](e.tree) {
+
+    private[this] val element = implicitly[Element[T]]
+
+    private[this] var lower: Bound[T] = if(e.belowAll) Unbound() else null
+
+    private[this] def nextInterval() = {
+      import element.{fromLong, ops}
+      var result : Interval[T] = null
+      if(hasNextLeaf) {
+        val leaf = nextLeaf()
+        if(lower eq null) leaf match {
+          case Both(x) =>
+            result = Interval.point(fromLong(x))
+            lower = null
+          case Below(x) =>
+            result = null
+            lower = Closed(fromLong(x))
+          case Above(x) =>
+            result = null
+            lower = Open(fromLong(x))
+
+          // $COVERAGE-OFF$
+          case _ => unreachable
+          // $COVERAGE-ON$
+        } else leaf match {
+          case Both(x) =>
+            val upper = Open(fromLong(x))
+            result = Interval.fromBounds[T](lower, upper)
+            lower = upper
+          case Below(x) =>
+            val upper = Open(fromLong(x))
+            result = Interval.fromBounds[T](lower, upper)
+            lower = null
+          case Above(x) =>
+            val upper = Closed(fromLong(x))
+            result = Interval.fromBounds[T](lower, upper)
+            lower = null
+          // $COVERAGE-OFF$
+          case _ => unreachable
+          // $COVERAGE-ON$
+        }
+      } else if(lower ne null) {
+        result = Interval.fromBounds(lower, Unbound())
+        lower = null
+      } else {
+        Iterator.empty.next()
+      }
+      result
+    }
+
+    def hasNext = hasNextLeaf || (lower ne null)
+
+    @tailrec
+    override def next(): Interval[T] = {
+      val result = nextInterval()
+      if(result ne null)
+        result
+      else
+        next()
+    }
+  }
+
   private def apply[T:Element](below:Boolean, tree:Tree): IntervalTrie[T] =
     IntervalTrieImpl(below, tree, implicitly[Element[T]])
 
@@ -357,8 +460,11 @@ object IntervalTrie {
       override def foreach[U](f: Interval[T] => U): Unit = foreachInterval(belowAll, tree)(f)
     }
 
-    def edges = new AbstractTraversable[T] {
-      override def foreach[U](f: T => U): Unit = Tree.foreachEdge(tree)(key => f(ise.fromLong(key)))
+    def intervalIterator = new IntervalIterator[T](lhs)
+
+    def edges : Iterable[T] = new AbstractIterable[T] {
+
+      override def iterator: Iterator[T] = new EdgeIterator[T](lhs.tree)
     }
 
     override def toString = {
