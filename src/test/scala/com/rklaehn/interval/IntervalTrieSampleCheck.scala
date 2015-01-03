@@ -72,7 +72,7 @@ object IntervalTrieSampleCheck extends Properties("IntervalSet.Sample") {
   property("hull") = forAll { a: IntervalTrie[Long] =>
     val hullSet = IntervalTrie(a.hull)
     val outside = ~hullSet
-    val nothingOutside = (a & outside) == IntervalTrie.zero[Long]
+    val nothingOutside = (a & outside) == IntervalTrie.empty[Long]
     val allInside = a.intervals.forall(i => hullSet.isSupersetOf(IntervalTrie(i)))
     nothingOutside & allInside
   }

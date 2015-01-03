@@ -218,9 +218,9 @@ object IntervalSeq {
 
   def hole[T: Order](value: T) = singleton(true, value, K01)
 
-  def zero[T: Order]: IntervalSeq[T] = new IntervalSeq[T](false, Array()(classTag), Array(), implicitly[Order[T]])
+  def empty[T: Order]: IntervalSeq[T] = new IntervalSeq[T](false, Array()(classTag), Array(), implicitly[Order[T]])
 
-  def one[T: Order]: IntervalSeq[T] = new IntervalSeq[T](true, Array()(classTag), Array(), implicitly[Order[T]])
+  def all[T: Order]: IntervalSeq[T] = new IntervalSeq[T](true, Array()(classTag), Array(), implicitly[Order[T]])
 
   def constant[T: Order](value: Boolean) : IntervalSeq[T] = new IntervalSeq[T](value, Array()(classTag), Array(), implicitly[Order[T]])
 
@@ -234,15 +234,15 @@ object IntervalSeq {
     case (Closed(a),    Open(b))      => fromTo(a, K11, b, K00)
     case (Open(a),      Closed(b))    => fromTo(a, K01, b, K10)
     case (Open(a),      Open(b))      => fromTo(a, K01, b, K00)
-    case (Unbound(),    Unbound())    => one[T]
-    case (EmptyBound(), EmptyBound()) => zero[T]
+    case (Unbound(),    Unbound())    => all[T]
+    case (EmptyBound(), EmptyBound()) => empty[T]
   }
 
   def apply(text:String) : IntervalSeq[Rational] = {
     val intervals = text.split(';').map(Interval.apply)
     def intervalToIntervalSet(i:Interval[Rational]) : IntervalSeq[Rational] = apply(i)
     val simpleSets = intervals.map(intervalToIntervalSet)
-    (zero[Rational] /: simpleSets)(_ | _)
+    (empty[Rational] /: simpleSets)(_ | _)
   }
 
   private def fromTo[T: Order](a:T, ak:Byte, b:T, bk:Byte) =

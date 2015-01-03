@@ -9,9 +9,9 @@ object IntervalTrieAlgebra {
 
     def eqv(x: IntervalTrie[T], y: IntervalTrie[T]) = x == y
 
-    def zero = IntervalTrie.zero[T]
+    def zero = IntervalTrie.empty[T]
 
-    def one = IntervalTrie.one[T]
+    def one = IntervalTrie.all[T]
 
     def complement(a: IntervalTrie[T]) = ~a
 

@@ -8,9 +8,9 @@ object IntervalSeqAlgebra {
 
     def eqv(x: IntervalSeq[T], y: IntervalSeq[T]) = x == y
 
-    def zero = IntervalSeq.zero[T]
+    def zero = IntervalSeq.empty[T]
 
-    def one = IntervalSeq.one[T]
+    def one = IntervalSeq.all[T]
 
     def complement(a: IntervalSeq[T]) = ~a
 

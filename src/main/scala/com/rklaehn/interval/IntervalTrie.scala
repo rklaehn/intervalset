@@ -166,7 +166,7 @@ object IntervalTrie {
 
   def constant[T:Element](value:Boolean) = IntervalTrie[T](value, null)
 
-  def zero[T:Element] = constant[T](false)
+  def empty[T:Element] = constant[T](false)
 
   def point[T:Element](value:T) = IntervalTrie[T](false, Tree.Leaf(toPrefix(value), true, false))
 
@@ -174,7 +174,7 @@ object IntervalTrie {
 
   def above[T:Element](value:T) = IntervalTrie[T](false, Tree.Leaf(toPrefix(value), false, true))
 
-  def one[T:Element] = constant[T](true)
+  def all[T:Element] = constant[T](true)
 
   def hole[T:Element](value:T) = IntervalTrie[T](true, Tree.Leaf(toPrefix(value), true, false))
 
@@ -192,8 +192,8 @@ object IntervalTrie {
     case (Closed(a),    Open(b))      => fromTo(Below(a), Below(b))
     case (Open(a),      Closed(b))    => fromTo(Above(a), Above(b))
     case (Open(a),      Open(b))      => fromTo(Above(a), Below(b))
-    case (Unbound(),    Unbound())    => one[T]
-    case (EmptyBound(), EmptyBound()) => zero[T]
+    case (Unbound(),    Unbound())    => all[T]
+    case (EmptyBound(), EmptyBound()) => empty[T]
   }
 
   private object Below {
@@ -232,7 +232,7 @@ object IntervalTrie {
     def intervalToIntervalSet(i:Interval[Long]) : IntervalTrie[Long] = apply(i)
     val intervals = text.split(';').map(Interval.apply).map(_.mapBounds(rationalToLong)(la))
     val simpleSets = intervals.map(intervalToIntervalSet)
-    (zero[Long] /: simpleSets)(_ | _)
+    (empty[Long] /: simpleSets)(_ | _)
   }
 
   private final def foreachInterval[T:Element, U](a0:Boolean, a:Tree)(f:Interval[T] => U): Unit = {
@@ -311,8 +311,8 @@ object IntervalTrie {
       if(isEmpty) {
         Interval.empty[T]
       } else {
-        val lower = if(belowAll) Unbound[T] else lowerBound(tree)
-        val upper = if(aboveAll) Unbound[T] else upperBound(tree)
+        val lower = if(belowAll) Unbound[T]() else lowerBound(tree)
+        val upper = if(aboveAll) Unbound[T]() else upperBound(tree)
         Interval.fromBounds(lower, upper)
       }
     }

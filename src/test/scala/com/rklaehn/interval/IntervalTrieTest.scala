@@ -31,7 +31,7 @@ class IntervalTrieTest {
     assertEquals(above(1L), a & b)
     assertEquals(point(1L), a ^ b)
     assertEquals(atOrAbove(1L), a | c)
-    assertEquals(zero[Long], a & c)
+    assertEquals(empty[Long], a & c)
     assertEquals(atOrAbove(1L), a ^ c)
     assertEquals(hole(1L), a | d)
     assertEquals(above(1L), a & d)

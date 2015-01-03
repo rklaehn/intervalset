@@ -30,8 +30,8 @@ object IntervalSeqArbitrary {
   }
 
   private def randomProfileGen(size:Int) = Gen.frequency[IntervalSeq[Long]](
-    1 -> IntervalSeq.zero[Long],
-    1 -> IntervalSeq.one[Long],
+    1 -> IntervalSeq.empty[Long],
+    1 -> IntervalSeq.all[Long],
     15 -> randomProfileXor(0, 100, size),
     15 -> randomProfileXor(Long.MinValue, Long.MaxValue, size)
   )

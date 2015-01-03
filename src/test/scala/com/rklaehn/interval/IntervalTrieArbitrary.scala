@@ -24,8 +24,8 @@ object IntervalTrieArbitrary {
   }
 
   private def randomProfileGen(size:Int) = Gen.frequency[IntervalTrie[Long]](
-    1 -> IntervalTrie.zero[Long],
-    1 -> IntervalTrie.one[Long],
+    1 -> IntervalTrie.empty[Long],
+    1 -> IntervalTrie.all[Long],
     15 -> randomProfileXor(0, 100, size),
     15 -> randomProfileXor(Long.MinValue, Long.MaxValue, size)
   )
