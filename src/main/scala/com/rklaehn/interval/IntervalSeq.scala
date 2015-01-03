@@ -85,10 +85,8 @@ final class IntervalSeq[T] private (
 
   def ^(rhs:IntervalSeq[T]) = new Xor[T](lhs, rhs).result
 
-  // todo: provide efficient implementation
   def intersects(rhs: IntervalSeq[T]): Boolean = !new Disjoint[T](lhs, rhs).result
 
-  // todo: provide efficient implementation
   def isSupersetOf(rhs: IntervalSeq[T]): Boolean = new IsSupersetOf[T](lhs, rhs).result
 
   def isProperSupersetOf(rhs: IntervalSeq[T]): Boolean = isSupersetOf(rhs) && (lhs != rhs)
