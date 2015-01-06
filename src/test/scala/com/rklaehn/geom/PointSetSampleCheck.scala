@@ -58,4 +58,8 @@ object PointSetSampleCheck extends Properties("PointSet.Sample") {
   property("Diff") = forAll { (a:PointSet[Long], b:PointSet[Long]) =>
     binarySampleTest(a, b, a - b, _ - _)
   }
+
+  property("GT") = forAll { a:PointSet[Long] =>
+    unarySampleTest(a, a > 0, { x => if(x>0) 1 else 0})
+  }
 }

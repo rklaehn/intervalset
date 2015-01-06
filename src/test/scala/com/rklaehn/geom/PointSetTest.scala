@@ -147,7 +147,54 @@ class PointSetTest {
     assertEquals(0,       test(xb+1,yb+0))
     assertEquals(0,       test(xb+1,yb+1))
   }
-//
+
+  @Test
+  def scanOperationTest1(): Unit = {
+    val p =
+      PointSet.point(0, 0, 1) + PointSet.point(0,0,1)
+    val r = p > 0
+    println(p)
+    println(r)
+  }
+
+  @Test
+  def scanOperationTest2(): Unit = {
+    val p =
+      PointSet.horizontalEdge(0, 10, 0, 1) + PointSet.horizontalEdge(0,15,0,1)
+    val r = p > 0
+    println(p)
+    println(r)
+  }
+
+  @Test
+  def scanOperationTest3(): Unit = {
+    val p =
+      PointSet.verticalEdge[Long](0, 0, 10, 1) + PointSet.verticalEdge(0, 5, 15, 1)
+    val r = p > 0
+    println(p)
+    println(r)
+  }
+
+  @Test
+  def scanOperationTest4(): Unit = {
+    val p =
+      PointSet.rectangle[Long](0, 0, 10, 10, 1, 1)
+    val r = p > 0
+    println(p)
+    println(r)
+  }
+
+  @Test
+  def scanOperationTest5(): Unit = {
+    val p =
+      PointSet.rectangle[Long](0, 0, 10, 10, 1, 1) +
+        PointSet.rectangle[Long](5, 5, 15, 15, 1, 1)
+    val r = p > 0
+    println(p)
+    println(r)
+  }
+
+  //
 //  @Test
 //  def manualSumTest(): Unit = {
 //    val a = PointSet.point(24L, -140L, -4)
