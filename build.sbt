@@ -1,5 +1,7 @@
 import scoverage.ScoverageSbtPlugin.ScoverageKeys._
 
+import CoverallsPlugin.CoverallsKeys._
+
 name := "intervalset"
 
 scalaVersion := "2.11.4"
@@ -21,6 +23,8 @@ unmanagedBase in Test <<= baseDirectory { base => base / "test-lib" }
 coverageMinimum := 100
 
 coverageFailOnMinimum := true
+
+coverallsTokenFile := "coveralls.token"
 
 scalacOptions ++= Seq("-unchecked", "-feature")
 
