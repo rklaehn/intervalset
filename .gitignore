@@ -4,3 +4,6 @@
 
 #SBT
 target/
+
+#Private tokens
+*.token
