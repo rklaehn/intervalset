@@ -1,9 +1,11 @@
 sudo: false
 language: scala
 scala:
-- "2.11.1"
+- "2.11.5"
 script:
-  - sbt coverage test
+  - sbt clean coverage test
+after_success:
+  - sbt coveralls
 branches:
   only:
     - master
