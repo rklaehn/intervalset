@@ -3,7 +3,7 @@
 Efficient immutable interval sets for [spire](https://github.com/non/spire)
 
 [![Build Status](https://travis-ci.org/rklaehn/intervalset.png)](https://travis-ci.org/rklaehn/intervalset)
-[![Coverage Status](https://coveralls.io/repos/rklaehn/intervalset/badge.svg)](https://coveralls.io/r/rklaehn/intervalset)
+[![Coverage Status](https://coveralls.io/repos/rklaehn/intervalset/badge.png)](https://coveralls.io/r/rklaehn/intervalset)
 
 This repository contains two data structures for sets of *non-overlapping* intervals. Boundaries are either inclusive or exclusive, so (0..2] is different to [1..2]. 
 
