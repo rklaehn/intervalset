@@ -14,6 +14,19 @@ object RopeCheck extends Properties("Rope") {
     else {
       val rope = nea.map(Rope.apply).reduce(_ ++ _)
       val concat = nea.reduce(_ ++ _)
+      println(rope.length + " " + rope.depth)
+      rope.length == concat.length && concat.indices.forall(i => concat(i) == rope(i))
+    }
+  }
+
+  property("concat/apply with rebalance") = forAll { a:Array[Array[Int]] =>
+    val nea = a.filterNot(_.isEmpty)
+    if(nea.isEmpty)
+      true
+    else {
+      val items = a.flatten.map(i => Array(i))
+      val rope = items.map(Rope.apply).reduce(_ ++ _)
+      val concat = nea.reduce(_ ++ _)
       rope.length == concat.length && concat.indices.forall(i => concat(i) == rope(i))
     }
   }
