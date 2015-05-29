@@ -85,6 +85,8 @@ object BinaryMerge {
         ri += 1
         bi += 1
       } else {
+        r(ri) = a(ai)
+        ri += 1
         r(ri) = b(bi)
         ri += 1
         ai += 1
@@ -101,9 +103,10 @@ object BinaryMerge {
       ri += 1
       bi += 1
     }
-    resize(r, ri)
+    r
   }
 
+  /*
   private[this] def resize[T:ClassTag](x:Array[T], n: Int): Array[T] = {
     if (n == x.length)
       x
@@ -112,7 +115,7 @@ object BinaryMerge {
       System.arraycopy(x, 0, t, 0, n)
       t
     }
-  }
+  }*/
 
   private class ArrayBinaryMerge[@specialized T](a: Array[T], b: Array[T])(implicit o: Order[T], c: ClassTag[T]) extends BinaryMerge {
 
@@ -131,19 +134,14 @@ object BinaryMerge {
     def collision(ai: Int, bi: Int) = {
       r(ri) = a(ai)
       ri += 1
+      r(ri) = b(bi)
+      ri += 1
     }
 
     val r = Array.ofDim[T](a.length + b.length)
     var ri = 0
     merge0(0, a.length, 0, b.length)
 
-    def result =
-      if (ri == r.length)
-        r
-      else {
-        val t = Array.ofDim[T](ri)
-        System.arraycopy(r, 0, t, 0, ri)
-        t
-      }
+    def result = r
   }
 }

@@ -6,7 +6,6 @@ import org.junit.Test
 
 import scala.reflect.ClassTag
 
-
 class QuickArrayMergeTest {
 
   @Test
