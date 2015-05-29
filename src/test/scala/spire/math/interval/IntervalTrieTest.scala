@@ -1,9 +1,8 @@
-package com.rklaehn.interval
+package spire.math.interval
 
 import org.junit.Assert._
 import org.junit.Test
 import spire.algebra.Order
-import spire.math.interval.Closed
 import spire.math._
 
 class IntervalTrieTest {

@@ -1,4 +1,4 @@
-package com.rklaehn.interval
+package spire.math.interval
 
 import language.implicitConversions
 import spire.algebra.{AdditiveMonoid, Order}

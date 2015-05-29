@@ -1,6 +1,6 @@
-package com.rklaehn.interval
+package spire.math.interval
 
-import com.rklaehn.interval.IntervalTrieSampleCheck._
+import spire.math.interval.IntervalTrieSampleCheck._
 import org.scalacheck.Properties
 import org.scalacheck.Prop._
 import spire.math.Rational

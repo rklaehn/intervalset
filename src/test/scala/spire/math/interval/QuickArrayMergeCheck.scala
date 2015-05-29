@@ -1,4 +1,4 @@
-package com.rklaehn.interval
+package spire.math.interval
 
 import java.util.Arrays
 

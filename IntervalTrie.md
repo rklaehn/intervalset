@@ -13,20 +13,20 @@ There are typeclass instances to make the data structure seamlessly usable with 
 ## Usage
 
 ```scala
-scala> import com.rklaehn.interval.IntervalTrie._
+scala> import spire.math.interval.IntervalTrie._
 import IntervalTrie._
 
 scala> above(math.E) & below(math.Pi)
-res1: com.rklaehn.interval.IntervalTrie[Double] = (2.718281828459045, 3.141592653589793)
+res1: spire.math.interval.IntervalTrie[Double] = (2.718281828459045, 3.141592653589793)
 
 scala> val x = above(math.E) & below(math.Pi)
-x: com.rklaehn.interval.IntervalTrie[Double] = (2.718281828459045, 3.141592653589793)
+x: spire.math.interval.IntervalTrie[Double] = (2.718281828459045, 3.141592653589793)
 
 scala> ~x
-res2: com.rklaehn.interval.IntervalTrie[Double] = (-∞, 2.718281828459045];[3.141592653589793, ∞)
+res2: spire.math.interval.IntervalTrie[Double] = (-∞, 2.718281828459045];[3.141592653589793, ∞)
 
 scala> point(1L) ^ hole(2L)
-res3: com.rklaehn.interval.IntervalTrie[Long] = (-∞, 1);(1, 2);(2, ∞)
+res3: spire.math.interval.IntervalTrie[Long] = (-∞, 1);(1, 2);(2, ∞)
 ```
 
 ## Time Complexity

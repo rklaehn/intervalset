@@ -32,10 +32,10 @@ scala> import IntervalSeq._
 import IntervalSeq._
 
 scala> (above(Rational(1,3)) | below(Rational(-4,7))) ^ point(Rational(17,5))
-res0: com.rklaehn.interval.IntervalSeq[spire.math.Rational] = (-∞, -4/7);(1/3, 17/5);(17/5, ∞)
+res0: spire.math.interval.IntervalSeq[spire.math.Rational] = (-∞, -4/7);(1/3, 17/5);(17/5, ∞)
 
 scala> ~res0
-res1: com.rklaehn.interval.IntervalSeq[spire.math.Rational] = [-4/7, 1/3];[17/5]
+res1: spire.math.interval.IntervalSeq[spire.math.Rational] = [-4/7, 1/3];[17/5]
 ```
 
 ## Time Complexity

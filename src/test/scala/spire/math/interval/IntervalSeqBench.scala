@@ -1,4 +1,4 @@
-package com.rklaehn.interval
+package spire.math.interval
 
 import ichi.bench._
 import spire.syntax.all._

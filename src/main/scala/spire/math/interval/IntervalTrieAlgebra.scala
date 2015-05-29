@@ -1,6 +1,6 @@
-package com.rklaehn.interval
+package spire.math.interval
 
-import com.rklaehn.interval.IntervalTrie.Element
+import spire.math.interval.IntervalTrie.Element
 import spire.algebra.{Bool, Eq}
 
 object IntervalTrieAlgebra {

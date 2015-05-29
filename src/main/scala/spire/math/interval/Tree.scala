@@ -1,4 +1,4 @@
-package com.rklaehn.interval
+package spire.math.interval
 
 private[interval] object Tree {
 

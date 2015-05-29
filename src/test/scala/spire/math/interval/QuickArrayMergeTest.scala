@@ -1,4 +1,4 @@
-package com.rklaehn.interval
+package spire.math.interval
 
 import spire.implicits._
 import org.junit.Assert._

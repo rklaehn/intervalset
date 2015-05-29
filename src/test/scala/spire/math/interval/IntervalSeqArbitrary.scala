@@ -1,4 +1,4 @@
-package com.rklaehn.interval
+package spire.math.interval
 
 import org.scalacheck.{Gen, Arbitrary}
 import spire.implicits._
