@@ -5,6 +5,7 @@ scala:
 script:
   - sbt clean coverage test
 after_success:
+  - bash <(curl -s https://codecov.io/bash)
   - sbt coveralls
 branches:
   only:
