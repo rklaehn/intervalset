@@ -13,10 +13,13 @@ class StableSortedSeqTest {
     val n = IntervalMap.fromTo(0L, 20L, 2)
     val o = m merge n
     println(o.elements.mkString(","))
-    println(o.value)
+    // println(o.value)
     println(o.at(-5L))
+    println(o.at(0L))
     println(o.at(5L))
+    println(o.at(10L))
     println(o.at(15L))
+    println(o.at(20L))
     println(o.at(25L))
   }
 

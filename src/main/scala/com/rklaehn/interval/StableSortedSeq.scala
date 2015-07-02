@@ -8,20 +8,20 @@ import Order.ordering
 import scala.collection.AbstractTraversable
 import scala.collection.immutable.SortedMap
 
-class IntervalMap[K, V] private (private val initial: SortedMap[V, Int], private val root: StableSortedSeq.Node)(implicit p: StableSortedSeq.Partitioner[K], m: Monoid[SortedMap[V, Int]]) {
+class IntervalMap[K, V] private (private val initial: SortedMap[V, Int], private val root: StableSortedSeq.Node[K, SortedMap[V, Int]])(implicit p: StableSortedSeq.Partitioner[K], m: Monoid[SortedMap[V, Int]]) {
 
   implicit def order = p.o
 
   def value: SortedMap[V, Int] = StableSortedSeq.v[SortedMap[V, Int]](root)
 
   def at(k: K): SortedMap[V, Int] = {
-    def delta(node: StableSortedSeq.Node): SortedMap[V, Int] = node match {
+    def delta(node: StableSortedSeq.Node[K, SortedMap[V, Int]]): SortedMap[V, Int] = node match {
       case x:StableSortedSeq.Branch[K, SortedMap[V, Int]] =>
         if(k < x.p) delta(x.l)
-        else m.op(StableSortedSeq.v(x.l), delta(x.r))
+        else m.op(x.l.v, delta(x.r))
       case x:StableSortedSeq.Leaf[K, SortedMap[V, Int]] =>
-        if(k < x._1) m.id
-        else x._2
+        if(k < x.p) m.id
+        else x.v
       case _ => m.id
     }
     m.op(initial, delta(root))
@@ -41,16 +41,12 @@ object IntervalMap {
   private implicit def valueMonoid[V: Order]: Monoid[SortedMap[V, Int]] = new Monoid[SortedMap[V, Int]] {
     def id = SortedMap.empty[V, Int]
 
-    def op(x: SortedMap[V, Int], y: SortedMap[V, Int]) = {
-      var r = x
-      for((k, v) <- y) {
-        val count1 = x.getOrElse(k, 0) + v
-        if(count1 != 0)
-          r = r.updated(k, count1)
-        else
-          r = r - k
+    def op(x: SortedMap[V, Int], y: SortedMap[V, Int]): SortedMap[V, Int] = if(x.size < y.size) op(y, x) else {
+      y.foldLeft(x) { case (r, (k, count)) =>
+        val count1 = count + r.getOrElse(k, 0)
+        if(count1 != 0) r.updated(k, count1)
+        else r - k
       }
-      r
     }
   }
 
@@ -65,7 +61,7 @@ object IntervalMap {
   }
 }
 
-class SortedSet[K: StableSortedSeq.Partitioner, V: Monoid] private (private val root: StableSortedSeq.Node) {
+class SortedSet[K: StableSortedSeq.Partitioner, V: Monoid] private (private val root: StableSortedSeq.Node[K, V]) {
 
   def value: V = StableSortedSeq.v[V](root)
 
@@ -87,9 +83,6 @@ object SortedSet {
 }
 
 object StableSortedSeq {
-
-  private[interval] type Node = AnyRef
-  private[interval] type Leaf[K, V] = (K, V)
 
   sealed trait Partitioner[K] {
     def partition(a: K, b: K): (K, K)
@@ -113,14 +106,14 @@ object StableSortedSeq {
     val o = implicitly[Order[Long]]
   }
 
-  def single[K: Partitioner, V](key: K, value: V): Node =
-    (key, value)
+  def single[K: Partitioner, V](key: K, value: V): Node[K, V] =
+    Leaf(key, value)
 
-  def keys[K, V](s: Node): Traversable[K] = {
+  def keys[K, V](s: Node[K, V]): Traversable[K] = {
     new AbstractTraversable[K] {
       def foreach0[U](n: AnyRef, f: K => U): Unit = n match {
         case l: (K, V) => f(l._1)
-        case Branch(_, _, l, r, _) =>
+        case Branch(_, _, l, r) =>
           foreach0(l, f)
           foreach0(r, f)
         case _ =>
@@ -131,11 +124,11 @@ object StableSortedSeq {
 
   }
 
-  def values[K, V](s: Node): Traversable[V] = {
+  def values[K, V](s: Node[K, V]): Traversable[V] = {
     new AbstractTraversable[V] {
-      def foreach0[U](n: AnyRef, f: V => U): Unit = n match {
-        case l: (K, V) => f(l._2)
-        case Branch(_, _, l, r, _) =>
+      def foreach0[U](n: Node[K, V], f: V => U): Unit = n match {
+        case Leaf(_, v) => f(v)
+        case Branch(_, _, l, r) =>
           foreach0(l, f)
           foreach0(r, f)
         case _ =>
@@ -146,11 +139,11 @@ object StableSortedSeq {
 
   }
 
-  def elements[K, V](s: Node): Traversable[(K, V)] = {
+  def elements[K, V](s: Node[K, V]): Traversable[(K, V)] = {
     new AbstractTraversable[(K, V)] {
       def foreach0[U](n: AnyRef, f: ((K, V)) => U): Unit = n match {
-        case l: (K, V) => f(l)
-        case Branch(_, _, l, r, _) =>
+        case l: Leaf[K, V] => f((l.p, l.v))
+        case Branch(_, _, l, r) =>
           foreach0(l, f)
           foreach0(r, f)
         case _ =>
@@ -161,28 +154,22 @@ object StableSortedSeq {
 
   }
 
-  def structuralEquals[K: Eq, V: Eq](a: Node, b: Node): Boolean = (a, b) match {
+  def structuralEquals[K: Eq, V: Eq](a: Node[K, V], b: Node[K, V]): Boolean = (a, b) match {
     case (a: Branch[K, V], b: Branch[K, V]) =>
       a.p == b.p && a.hw == b.hw && structuralEquals[K, V](a.l, b.l) && structuralEquals[K, V](a.r, b.r)
     case (a: Leaf[K, V], b: Leaf[K, V]) =>
-      a._1 === b._1 && a._2 === b._2
+      a.p === b.p && a.v === b.v
     case _ => false
   }
 
   @inline
-  private def p[K, V](x: Node): K = x match {
-    case x: (K, V) => x._1
-    case x: Branch[K, V] => x.p
-  }
-
-  @inline
-  private[interval] def v[V: Monoid](x: Node): V = x match {
-    case x:(_, V) => x._2
+  private[interval] def v[V: Monoid](x: Node[_, V]): V = x match {
+    case x:Leaf[_, V] => x.v
     case x:Branch[_, V] => x.v
     case _ => implicitly[Monoid[V]].id
   }
 
-  def merge[K: Partitioner, V: Monoid](a: Node, b: Node): Node =
+  def merge[K: Partitioner, V: Monoid](a: Node[K, V], b: Node[K, V]): Node[K, V] =
     new Merger[K, V].apply(a, b)
 
   class Merger[K, V](implicit p: Partitioner[K], v: Monoid[V]) {
@@ -193,38 +180,25 @@ object StableSortedSeq {
 
     def combine(a: V, b: V): V = v.op(a, b)
 
-    @inline
-    private[this] def p(x: Node): K = x match {
-      case x: (K, V) => x._1
-      case x: Branch[K, V] => x.p
+    def nodeAbove(l: Node[K, V], r: Node[K, V]): Branch[K, V] = {
+      require(l.p < r.p)
+      val (p1, hw1) = p.partition(l.p, r.p)
+      Branch(p1, hw1, l, r)
     }
 
-    @inline
-    private[this] def v(x: Node): V = x match {
-      case x:(K, V) => x._2
-      case x:Branch[K, V] => x.v
-    }
-
-    def nodeAbove(l: Node, r: Node): Branch[K, V] = {
-      require(p(l) < p(r))
-      val v1 = combine(v(l), v(r))
-      val (p1, hw1) = p.partition(p(l), p(r))
-      Branch(p1, hw1, l, r, v1)
-    }
-
-    def withL(n: Branch[K, V], l1: Node): Branch[K, V] = if(l1 eq null) n else {
+    def withL(n: Branch[K, V], l1: Node[K, V]): Branch[K, V] = if(l1 eq null) n else {
 //      require(l1.p + l1.hw <= n.p)
 //      require(l1.p - l1.hw >= n.p - n.hw)
-      n.copy(l = l1, v = combine(v(l1), v(n.r)))
+      n.copy(l = l1)
     }
 
-    def withR(n: Branch[K, V], r1: Node): Branch[K, V] = if(r1 eq null) n else {
+    def withR(n: Branch[K, V], r1: Node[K, V]): Branch[K, V] = if(r1 eq null) n else {
 //      require(r1.p - r1.hw >= n.p)
 //      require(r1.p + r1.hw <= n.p + n.hw)
-      n.copy(r = r1, v = combine(v(n.l), v(r1)))
+      n.copy(r = r1)
     }
 
-    def apply(a: Node, b: Node): Node = (a, b) match {
+    def apply(a: Node[K, V], b: Node[K, V]): Node[K, V] = (a, b) match {
       case (a: Branch[K, V], b: Branch[K, V]) =>
         val p_ab = a.p compare b.p
         if (p_ab == 0) {
@@ -235,9 +209,8 @@ object StableSortedSeq {
           val p1 = a.p
           val l1 = apply(a.l, b.l)
           val r1 = apply(a.r, b.r)
-          val v1 = combine(a.v, b.v)
           val hw1 = math.max(a.hw, b.hw)
-          Branch(p1, hw1, l1, r1, v1)
+          Branch(p1, hw1, l1, r1)
         } else if (p_ab < 0) {
           // a is below b
           // a |
@@ -284,38 +257,38 @@ object StableSortedSeq {
           }
         }
       case (a: Branch[K, V], b: Leaf[K, V]) =>
-        val p_ab = a.p compare b._1
+        val p_ab = a.p compare b.p
         if (p_ab <= 0) {
           // b.p >= a.p
-          if (a.p + a.hw > b._1)
+          if (a.p + a.hw > b.p)
             withR(a, apply(a.r, b))
           else
             nodeAbove(a, b)
         } else {
           // b.p < a.p
-          if (a.p - a.hw <= b._1)
+          if (a.p - a.hw <= b.p)
             withL(a, apply(a.l, b))
           else
             nodeAbove(b, a)
         }
       case (a: Leaf[K, V], b: Branch[K, V]) =>
-        val p_ab = a._1 compare b.p
+        val p_ab = a.p compare b.p
         if (p_ab >= 0) {
-          if(a._1 < b.p + b.hw)
+          if(a.p < b.p + b.hw)
             withR(b, apply(a, b.r))
           else
             nodeAbove(b, a)
         } else {
           // a.p < b.p
-          if (a._1 >= b.p - b.hw)
+          if (a.p >= b.p - b.hw)
             withL(b, apply(a, b.l))
           else
             nodeAbove(a, b)
         }
       case (a: Leaf[K, V], b: Leaf[K, V]) =>
-        val p_ab = a._1 compare b._1
+        val p_ab = a.p compare b.p
         if(p_ab == 0)
-          (p(a), combine(a._2, b._2))
+          Leaf(a.p, combine(a.v, b.v))
         else if(p_ab < 0)
           nodeAbove(a, b)
         else
@@ -326,9 +299,16 @@ object StableSortedSeq {
     }
   }
 
-  // sealed abstract class Node[K, V]
+  sealed abstract class Node[K, V] {
+    def p: K
 
-  case class Branch[K, V](p: K, hw: K, l: Node, r: Node, v: V)
+    def v: V
+  }
 
-  // case class Leaf[K, V](p: K, v: V)
+  case class Branch[K, V](p: K, hw: K, l: Node[K, V], r: Node[K, V])(implicit m: Monoid[V]) extends Node[K, V] {
+
+    lazy val v = m.op(l.v, r.v)
+  }
+
+  case class Leaf[K, V](p: K, v: V) extends Node[K, V]
 }
