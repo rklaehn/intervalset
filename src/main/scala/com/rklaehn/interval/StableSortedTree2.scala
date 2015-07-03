@@ -6,7 +6,7 @@ import spire.math
 
 import scala.collection.AbstractTraversable
 
-object StableSortedTree {
+object StableSortedTree2 {
 
   sealed trait Partitioner[K] {
     def partition(a: K, b: K): (K, K)
@@ -30,8 +30,8 @@ object StableSortedTree {
     val o = implicitly[Order[Long]]
   }
 
-  def single[K: Partitioner, V](key: K, value: V): Node[K, V] =
-    Leaf(key, value)
+  def single[K: Partitioner, V: Monoid](key: K,  before: V, after: V): Node[K, V] =
+    Leaf(key, before, after)
 
   def keys[K, V](s: Node[K, V]): Traversable[K] = {
     new AbstractTraversable[K] {
@@ -48,32 +48,17 @@ object StableSortedTree {
 
   }
 
-  def values[K, V](s: Node[K, V]): Traversable[V] = {
-    new AbstractTraversable[V] {
-      def foreach0[U](n: Node[K, V], f: V => U): Unit = n match {
-        case Leaf(_, v) => f(v)
+  def elements[K, V](s: Node[K, V]): Traversable[(K, V, V)] = {
+    new AbstractTraversable[(K, V, V)] {
+      def foreach0[U](n: AnyRef, f: ((K, V, V)) => U): Unit = n match {
+        case l: Leaf[K, V] => f((l.p, l.before, l.after))
         case Branch(_, _, l, r) =>
           foreach0(l, f)
           foreach0(r, f)
         case _ =>
       }
 
-      def foreach[U](f: (V) => U) = foreach0(s, f)
-    }
-
-  }
-
-  def elements[K, V](s: Node[K, V]): Traversable[(K, V)] = {
-    new AbstractTraversable[(K, V)] {
-      def foreach0[U](n: AnyRef, f: ((K, V)) => U): Unit = n match {
-        case l: Leaf[K, V] => f((l.p, l.v))
-        case Branch(_, _, l, r) =>
-          foreach0(l, f)
-          foreach0(r, f)
-        case _ =>
-      }
-
-      def foreach[U](f: ((K, V)) => U) = foreach0(s, f)
+      def foreach[U](f: ((K, V, V)) => U) = foreach0(s, f)
     }
 
   }
@@ -82,7 +67,7 @@ object StableSortedTree {
     case (a: Branch[K, V], b: Branch[K, V]) =>
       a.p == b.p && a.hw == b.hw && structuralEquals[K, V](a.l, b.l) && structuralEquals[K, V](a.r, b.r)
     case (a: Leaf[K, V], b: Leaf[K, V]) =>
-      a.p === b.p && a.v === b.v
+      a.p === b.p && a.before === b.before && a.after == b.after
     case _ => false
   }
 
@@ -111,14 +96,14 @@ object StableSortedTree {
     }
 
     def withL(n: Branch[K, V], l1: Node[K, V]): Branch[K, V] = if(l1 eq null) n else {
-//      require(l1.p + l1.hw <= n.p)
-//      require(l1.p - l1.hw >= n.p - n.hw)
+      //      require(l1.p + l1.hw <= n.p)
+      //      require(l1.p - l1.hw >= n.p - n.hw)
       n.copy(l = l1)
     }
 
     def withR(n: Branch[K, V], r1: Node[K, V]): Branch[K, V] = if(r1 eq null) n else {
-//      require(r1.p - r1.hw >= n.p)
-//      require(r1.p + r1.hw <= n.p + n.hw)
+      //      require(r1.p - r1.hw >= n.p)
+      //      require(r1.p + r1.hw <= n.p + n.hw)
       n.copy(r = r1)
     }
 
@@ -212,7 +197,7 @@ object StableSortedTree {
       case (a: Leaf[K, V], b: Leaf[K, V]) =>
         val p_ab = a.p compare b.p
         if(p_ab == 0)
-          Leaf(a.p, combine(a.v, b.v))
+          Leaf(a.p, combine(a.before, b.before), combine(a.after, b.after))
         else if(p_ab < 0)
           nodeAbove(a, b)
         else
@@ -234,5 +219,8 @@ object StableSortedTree {
     lazy val v = m.op(l.v, r.v)
   }
 
-  case class Leaf[K, V](p: K, v: V) extends Node[K, V]
+  case class Leaf[K, V](p: K, before: V, after: V)(implicit m: Monoid[V]) extends Node[K, V] {
+
+    lazy val v = m.op(before, after)
+  }
 }

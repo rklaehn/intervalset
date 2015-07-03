@@ -5,7 +5,7 @@ import org.junit.Test
 import spire.algebra.{AdditiveMonoid, Monoid, Eq}
 import spire.implicits._
 
-class StableSortedTreeeTest {
+class StableSortedTreeTest {
 
   @Test
   def testIntervalMap0(): Unit = {
