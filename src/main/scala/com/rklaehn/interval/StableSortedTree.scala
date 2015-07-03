@@ -8,18 +8,18 @@ import Order.ordering
 import scala.collection.AbstractTraversable
 import scala.collection.immutable.SortedMap
 
-class IntervalMap[K, V] private (private val initial: SortedMap[V, Int], private val root: StableSortedSeq.Node[K, SortedMap[V, Int]])(implicit p: StableSortedSeq.Partitioner[K], m: Monoid[SortedMap[V, Int]]) {
+class IntervalMap[K, V] private (private val initial: SortedMap[V, Int], private val root: StableSortedTree.Node[K, SortedMap[V, Int]])(implicit p: StableSortedTree.Partitioner[K], m: Monoid[SortedMap[V, Int]]) {
 
   implicit def order = p.o
 
-  def value: SortedMap[V, Int] = StableSortedSeq.v[SortedMap[V, Int]](root)
+  def value: SortedMap[V, Int] = StableSortedTree.v[SortedMap[V, Int]](root)
 
   def at(k: K): SortedMap[V, Int] = {
-    def delta(node: StableSortedSeq.Node[K, SortedMap[V, Int]]): SortedMap[V, Int] = node match {
-      case x:StableSortedSeq.Branch[K, SortedMap[V, Int]] =>
+    def delta(node: StableSortedTree.Node[K, SortedMap[V, Int]]): SortedMap[V, Int] = node match {
+      case x:StableSortedTree.Branch[K, SortedMap[V, Int]] =>
         if(k < x.p) delta(x.l)
         else m.op(x.l.v, delta(x.r))
-      case x:StableSortedSeq.Leaf[K, SortedMap[V, Int]] =>
+      case x:StableSortedTree.Leaf[K, SortedMap[V, Int]] =>
         if(k < x.p) m.id
         else x.v
       case _ => m.id
@@ -28,12 +28,12 @@ class IntervalMap[K, V] private (private val initial: SortedMap[V, Int], private
   }
 
   def merge(that: IntervalMap[K, V]) = {
-    val root1 = StableSortedSeq.merge(this.root, that.root)
+    val root1 = StableSortedTree.merge(this.root, that.root)
     val initial1 = m.op(this.initial, that.initial)
     new IntervalMap[K, V](initial1, root1)
   }
 
-  def elements: Traversable[(K, SortedMap[V, Int])] = StableSortedSeq.elements(root)
+  def elements: Traversable[(K, SortedMap[V, Int])] = StableSortedTree.elements(root)
 }
 
 object IntervalMap {
@@ -50,39 +50,39 @@ object IntervalMap {
     }
   }
 
-  def empty[K: StableSortedSeq.Partitioner, V: Order]: IntervalMap[K, V] =
+  def empty[K: StableSortedTree.Partitioner, V: Order]: IntervalMap[K, V] =
     new IntervalMap[K, V](SortedMap.empty[V, Int], null)
 
-  def fromTo[K: StableSortedSeq.Partitioner, V: Order](min: K, max: K, v: V): IntervalMap[K, V] = {
-    val d0 = StableSortedSeq.single[K, SortedMap[V, Int]](min, SortedMap(v -> 1))
-    val d1 = StableSortedSeq.single[K, SortedMap[V, Int]](max, SortedMap(v -> -1))
-    val tree = StableSortedSeq.merge[K, SortedMap[V, Int]](d0, d1)
+  def fromTo[K: StableSortedTree.Partitioner, V: Order](min: K, max: K, v: V): IntervalMap[K, V] = {
+    val d0 = StableSortedTree.single[K, SortedMap[V, Int]](min, SortedMap(v -> 1))
+    val d1 = StableSortedTree.single[K, SortedMap[V, Int]](max, SortedMap(v -> -1))
+    val tree = StableSortedTree.merge[K, SortedMap[V, Int]](d0, d1)
     new IntervalMap[K, V](SortedMap.empty[V, Int], tree)
   }
 }
 
-class SortedSet[K: StableSortedSeq.Partitioner, V: Monoid] private (private val root: StableSortedSeq.Node[K, V]) {
+class SortedSet[K: StableSortedTree.Partitioner, V: Monoid] private (private val root: StableSortedTree.Node[K, V]) {
 
-  def value: V = StableSortedSeq.v[V](root)
+  def value: V = StableSortedTree.v[V](root)
 
   def merge(that: SortedSet[K, V]): SortedSet[K, V] = {
-    val root1 = StableSortedSeq.merge(this.root, that.root)
+    val root1 = StableSortedTree.merge(this.root, that.root)
     new SortedSet[K, V](root1)
   }
 
   def isEmpty: Boolean = root eq null
 
-  def keys: Traversable[K] = StableSortedSeq.keys(root)
+  def keys: Traversable[K] = StableSortedTree.keys(root)
 }
 
 object SortedSet {
 
-  def empty[K: StableSortedSeq.Partitioner, V: Monoid]: SortedSet[K, V] = new SortedSet[K, V](null)
+  def empty[K: StableSortedTree.Partitioner, V: Monoid]: SortedSet[K, V] = new SortedSet[K, V](null)
 
-  def single[K: StableSortedSeq.Partitioner, V: Monoid](k: K, v: V) = new SortedSet[K, V](StableSortedSeq.single(k, v))
+  def single[K: StableSortedTree.Partitioner, V: Monoid](k: K, v: V) = new SortedSet[K, V](StableSortedTree.single(k, v))
 }
 
-object StableSortedSeq {
+object StableSortedTree {
 
   sealed trait Partitioner[K] {
     def partition(a: K, b: K): (K, K)
