@@ -4,6 +4,7 @@ import spire.implicits._
 import spire.algebra._
 import spire.math
 import spire.math.Interval
+import spire.util.Opt
 
 import scala.collection.AbstractTraversable
 import scala.collection.immutable.HashSet
@@ -65,33 +66,73 @@ object StableSortedTree2 {
 
   }
 
-  def truncate[K, V](a: Node[K, V], i: IntervalSeq[K])(implicit xor: Monoid[V]): Node[K, V] = a match {
-    case a: Leaf[K, V] =>
-      val at_p = i.at(a.p)
-      val above_p = i.above(a.p)
-      if(at_p && above_p)
-        a
-      else if(at_p || above_p) {
-        val above0 = xor.op(a.sign, a.at)
-        val at1 = if (at_p) a.at else xor.id
-        val above1 = if (above_p) above0 else xor.id
-        val sign1 = xor.op(at1, above1)
-        Leaf(a.p, at1, sign1)
-      } else
-        null
-    case a: Branch[K, V] =>
-      val l1 = truncate(a.l, i)
-      val r1 = truncate(a.r, i)
-      if((l1 eq a.l) && (r1 eq a.r))
-        a
-      else {
-        val l1_defined = l1 ne null
-        val r1_defined = r1 ne null
-        if(l1_defined && r1_defined) a.copy(l = l1, r = r1)
-        else if(l1_defined) l1
-        else if(r1_defined) r1
+  def modifyOrRemove[K, V](a: Node[K, V], f: V => Opt[V])(implicit p: Partitioner[K], xor: Monoid[V]): Node[K, V] = {
+    implicit def keyOrder = p.o
+    def nodeAbove(l: Node[K, V], r: Node[K, V]): Branch[K, V] = {
+      require(l.p < r.p)
+      val (p1, hw1) = p.partition(l.p, r.p)
+      Branch(p1, hw1, l, r)
+    }
+    def op0(a: Node[K, V]): Node[K, V] = a match {
+      case a: Leaf[K, V] =>
+        val at1o = f(a.at)
+        val sign1o = f(a.sign)
+        if(at1o.isDefined || sign1o.isDefined) {
+          val at1 = at1o.getOrElseFast(xor.id)
+          val sign1 = sign1o.getOrElseFast(xor.id)
+          // todo: check if we can return a directly
+          a.copy(at = at1, sign = sign1)
+        } else null
+      case a: Branch[K, V] =>
+        val l1 = op0(a.l)
+        val r1 = op0(a.r)
+        val l1d = l1 ne null
+        val r1d = r1 ne null
+        if(l1d && r1d) nodeAbove(l1, r1)
+        else if(l1d) l1
+        else if(r1d) r1
         else null
-      }
+    }
+    op0(a)
+  }
+
+  def truncate[K, V](a: Node[K, V], i: IntervalSeq[K])(implicit p: Partitioner[K], xor: Monoid[V]): Node[K, V] = {
+    implicit def keyOrder = p.o
+    def nodeAbove(l: Node[K, V], r: Node[K, V]): Branch[K, V] = {
+      require(l.p < r.p)
+      val (p1, hw1) = p.partition(l.p, r.p)
+      Branch(p1, hw1, l, r)
+    }
+    def truncate0(a: Node[K, V]): Node[K, V] = a match {
+      case a: Leaf[K, V] =>
+        val at_p = i.at(a.p)
+        val above_p = i.above(a.p)
+        if (at_p && above_p)
+          a
+        else if (at_p || above_p) {
+          val above0 = xor.op(a.sign, a.at)
+          val at1 = if (at_p) a.at else xor.id
+          val above1 = if (above_p) above0 else xor.id
+          val sign1 = xor.op(at1, above1)
+          Leaf(a.p, at1, sign1)
+        } else
+          null
+      case a: Branch[K, V] =>
+        // todo: cutoff!
+        val l1 = truncate0(a.l)
+        val r1 = truncate0(a.r)
+        if ((l1 eq a.l) && (r1 eq a.r))
+          a
+        else {
+          val l1_defined = l1 ne null
+          val r1_defined = r1 ne null
+          if (l1_defined && r1_defined) nodeAbove(l1, r1)
+          else if (l1_defined) l1
+          else if (r1_defined) r1
+          else null
+        }
+    }
+    truncate0(a)
   }
 
   def structuralEquals[K: Eq, V: Eq](a: Node[K, V], b: Node[K, V]): Boolean = (a, b) match {
