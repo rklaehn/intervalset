@@ -32,24 +32,25 @@ object IntervalsTrie {
     new IntervalsTrie[K, V](SortedMap.empty, null)
 
   def single[K: Partitioner, V: Order](i: Interval[K], v: V): IntervalsTrie[K, V] = {
+    implicit val vm = valueMonoid[V]
     val inc = SortedMap(v -> 1)
     val dec = SortedMap(v -> -1)
     val none = SortedMap.empty[V, Int]
     def point(k: K): IntervalsTrie[K, V] =
-      new IntervalsTrie[K, V](none, Leaf(k, inc, dec))
+      new IntervalsTrie[K, V](none, Leaf(k, inc, none))
     def below(k: K): IntervalsTrie[K, V] =
-      new IntervalsTrie[K, V](inc, Leaf(k, dec, none))
+      new IntervalsTrie[K, V](inc, Leaf(k, dec, dec))
     def atOrBelow(k: K): IntervalsTrie[K, V] =
       new IntervalsTrie[K, V](inc, Leaf(k, none, dec))
     def above(k: K): IntervalsTrie[K, V] =
       new IntervalsTrie[K, V](none, Leaf(k, none, inc))
     def atOrAbove(k: K): IntervalsTrie[K, V] =
-      new IntervalsTrie[K, V](none, Leaf(k, inc, none))
+      new IntervalsTrie[K, V](none, Leaf(k, inc, inc))
     def fromTo(a: K, ai:Boolean, b: K, bi: Boolean) =
       new IntervalsTrie[K, V](none,
         merge(
-          Leaf(a, if(ai) inc else none, if(ai) none else inc),
-          Leaf(b, if(bi) none else dec, if(bi) dec else none)
+          Leaf(a, if(ai) inc else none, inc),
+          Leaf(b, if(bi) none else dec, dec)
         )
       )
     def all = new IntervalsTrie[K, V](inc, null)
@@ -82,12 +83,12 @@ class IntervalsTrie[K, V] private (private val initial: SortedMap[V, Int], priva
     def delta(node: Node[K, SortedMap[V, Int]]): SortedMap[V, Int] = node match {
       case x:Branch[K, SortedMap[V, Int]] =>
         if(k < x.p) delta(x.l)
-        else m.op(x.l.v, delta(x.r))
+        else m.op(x.l.delta, delta(x.r))
       case x:Leaf[K, SortedMap[V, Int]] =>
         val kp = k.compare(x.p)
         if(kp < 0) m.id
         else if(kp == 0) x.before
-        else x.v
+        else x.delta
       case _ => m.id
     }
     m.op(initial, delta(root))

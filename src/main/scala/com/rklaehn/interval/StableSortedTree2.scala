@@ -51,7 +51,7 @@ object StableSortedTree2 {
   def elements[K, V](s: Node[K, V]): Traversable[(K, V, V)] = {
     new AbstractTraversable[(K, V, V)] {
       def foreach0[U](n: AnyRef, f: ((K, V, V)) => U): Unit = n match {
-        case l: Leaf[K, V] => f((l.p, l.before, l.after))
+        case l: Leaf[K, V] => f((l.p, l.before, l.delta))
         case Branch(_, _, l, r) =>
           foreach0(l, f)
           foreach0(r, f)
@@ -67,14 +67,14 @@ object StableSortedTree2 {
     case (a: Branch[K, V], b: Branch[K, V]) =>
       a.p == b.p && a.hw == b.hw && structuralEquals[K, V](a.l, b.l) && structuralEquals[K, V](a.r, b.r)
     case (a: Leaf[K, V], b: Leaf[K, V]) =>
-      a.p === b.p && a.before === b.before && a.after == b.after
+      a.p === b.p && a.before === b.before && a.delta == b.delta
     case _ => false
   }
 
   @inline
   private[interval] def v[V: Monoid](x: Node[_, V]): V = x match {
-    case x:Leaf[_, V] => x.v
-    case x:Branch[_, V] => x.v
+    case x:Leaf[_, V] => x.delta
+    case x:Branch[_, V] => x.delta
     case _ => implicitly[Monoid[V]].id
   }
 
@@ -197,7 +197,7 @@ object StableSortedTree2 {
       case (a: Leaf[K, V], b: Leaf[K, V]) =>
         val p_ab = a.p compare b.p
         if(p_ab == 0)
-          Leaf(a.p, combine(a.before, b.before), combine(a.after, b.after))
+          Leaf(a.p, combine(a.before, b.before), combine(a.delta, b.delta))
         else if(p_ab < 0)
           nodeAbove(a, b)
         else
@@ -211,16 +211,13 @@ object StableSortedTree2 {
   sealed abstract class Node[K, V] {
     def p: K
 
-    def v: V
+    def delta: V
   }
 
   case class Branch[K, V](p: K, hw: K, l: Node[K, V], r: Node[K, V])(implicit m: Monoid[V]) extends Node[K, V] {
 
-    lazy val v = m.op(l.v, r.v)
+    lazy val delta = m.op(l.delta, r.delta)
   }
 
-  case class Leaf[K, V](p: K, before: V, after: V)(implicit m: Monoid[V]) extends Node[K, V] {
-
-    lazy val v = m.op(before, after)
-  }
+  case class Leaf[K, V](p: K, before: V, delta: V)(implicit m: Monoid[V]) extends Node[K, V]
 }
