@@ -10,7 +10,7 @@ import scala.annotation.tailrec
 import scala.collection.{AbstractIterator, AbstractTraversable}
 import scala.reflect.ClassTag
 
-final class IntervalSeq[T] private (
+final class IntervalSeq[T] private[interval] (
     val belowAll: Boolean,
     private val values: Array[T],
     private val kinds: Array[Byte],
@@ -252,13 +252,13 @@ object IntervalSeq {
   private def singleton[T: Order](belowAll: Boolean, value: T, kind: Byte): IntervalSeq[T] =
     new IntervalSeq(belowAll, Array(value)(classTag), Array(kind), implicitly[Order[T]])
 
-  private val K00 = 0.toByte
+  private[interval] val K00 = 0.toByte
 
-  private val K10 = 1.toByte
+  private[interval] val K10 = 1.toByte
 
-  private val K01 = 2.toByte
+  private[interval] val K01 = 2.toByte
 
-  private val K11 = 3.toByte
+  private[interval] val K11 = 3.toByte
 
   private def classTag[T] = ClassTag.AnyRef.asInstanceOf[ClassTag[T]]
 

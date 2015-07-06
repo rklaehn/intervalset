@@ -3,8 +3,10 @@ package com.rklaehn.interval
 import spire.implicits._
 import spire.algebra._
 import spire.math
+import spire.math.Interval
 
 import scala.collection.AbstractTraversable
+import scala.collection.immutable.HashSet
 
 object StableSortedTree2 {
 
@@ -51,7 +53,7 @@ object StableSortedTree2 {
   def elements[K, V](s: Node[K, V]): Traversable[(K, V, V)] = {
     new AbstractTraversable[(K, V, V)] {
       def foreach0[U](n: AnyRef, f: ((K, V, V)) => U): Unit = n match {
-        case l: Leaf[K, V] => f((l.p, l.before, l.delta))
+        case l: Leaf[K, V] => f((l.p, l.at, l.sign))
         case Branch(_, _, l, r) =>
           foreach0(l, f)
           foreach0(r, f)
@@ -63,18 +65,47 @@ object StableSortedTree2 {
 
   }
 
+  def truncate[K, V](a: Node[K, V], i: IntervalSeq[K])(implicit xor: Monoid[V]): Node[K, V] = a match {
+    case a: Leaf[K, V] =>
+      val at_p = i.at(a.p)
+      val above_p = i.above(a.p)
+      if(at_p && above_p)
+        a
+      else if(at_p || above_p) {
+        val above0 = xor.op(a.sign, a.at)
+        val at1 = if (at_p) a.at else xor.id
+        val above1 = if (above_p) above0 else xor.id
+        val sign1 = xor.op(at1, above1)
+        Leaf(a.p, at1, sign1)
+      } else
+        null
+    case a: Branch[K, V] =>
+      val l1 = truncate(a.l, i)
+      val r1 = truncate(a.r, i)
+      if((l1 eq a.l) && (r1 eq a.r))
+        a
+      else {
+        val l1_defined = l1 ne null
+        val r1_defined = r1 ne null
+        if(l1_defined && r1_defined) a.copy(l = l1, r = r1)
+        else if(l1_defined) l1
+        else if(r1_defined) r1
+        else null
+      }
+  }
+
   def structuralEquals[K: Eq, V: Eq](a: Node[K, V], b: Node[K, V]): Boolean = (a, b) match {
     case (a: Branch[K, V], b: Branch[K, V]) =>
       a.p == b.p && a.hw == b.hw && structuralEquals[K, V](a.l, b.l) && structuralEquals[K, V](a.r, b.r)
     case (a: Leaf[K, V], b: Leaf[K, V]) =>
-      a.p === b.p && a.before === b.before && a.delta == b.delta
+      a.p === b.p && a.at === b.at && a.sign === b.sign
     case _ => false
   }
 
   @inline
   private[interval] def v[V: Monoid](x: Node[_, V]): V = x match {
-    case x:Leaf[_, V] => x.delta
-    case x:Branch[_, V] => x.delta
+    case x:Leaf[_, V] => x.sign
+    case x:Branch[_, V] => x.sign
     case _ => implicitly[Monoid[V]].id
   }
 
@@ -197,7 +228,7 @@ object StableSortedTree2 {
       case (a: Leaf[K, V], b: Leaf[K, V]) =>
         val p_ab = a.p compare b.p
         if(p_ab == 0)
-          Leaf(a.p, combine(a.before, b.before), combine(a.delta, b.delta))
+          Leaf(a.p, combine(a.at, b.at), combine(a.sign, b.sign))
         else if(p_ab < 0)
           nodeAbove(a, b)
         else
@@ -211,13 +242,13 @@ object StableSortedTree2 {
   sealed abstract class Node[K, V] {
     def p: K
 
-    def delta: V
+    def sign: V
   }
 
   case class Branch[K, V](p: K, hw: K, l: Node[K, V], r: Node[K, V])(implicit m: Monoid[V]) extends Node[K, V] {
 
-    lazy val delta = m.op(l.delta, r.delta)
+    lazy val sign = m.op(l.sign, r.sign)
   }
 
-  case class Leaf[K, V](p: K, before: V, delta: V)(implicit m: Monoid[V]) extends Node[K, V]
+  case class Leaf[K, V](p: K, at: V, sign: V) extends Node[K, V]
 }
