@@ -352,6 +352,8 @@ class IntervalsTrie[K, V] private (val belowAll: HashSet[V], private val root: N
 
   implicit def order = p.o
 
+  def isEmpty: Boolean = belowAll.isEmpty && (root eq null)
+
   def aboveAll: HashSet[V] = root match {
     case n: Node[K,HashSet[V]] => m.op(belowAll, n.sign)
     case _ => belowAll
@@ -383,8 +385,8 @@ class IntervalsTrie[K, V] private (val belowAll: HashSet[V], private val root: N
     new IntervalSeq[K](belowAll, values.result(), kinds.result(), p.o)
   }
 
-  def or(rhs: IntervalsTrie[K, V]): IntervalsTrie[K, V] =
-    IntervalsTrie.or0[K, V](belowAll, root, rhs.belowAll, rhs.root)
+//  def or(rhs: IntervalsTrie[K, V]): IntervalsTrie[K, V] =
+//    IntervalsTrie.or0[K, V](belowAll, root, rhs.belowAll, rhs.root)
 
   def filterValues(f: V => Boolean): IntervalsTrie[K, V] = {
     val belowAll1 = belowAll.filter(f)
