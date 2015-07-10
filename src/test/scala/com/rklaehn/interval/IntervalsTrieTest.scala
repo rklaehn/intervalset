@@ -11,6 +11,8 @@ object IntervalsTrieBench extends App {
   // todo: use reducer
   val tree = th.pbenchWarm(th.Warm(leafs.reduce(_ xor _)))
   val truncated = th.pbenchWarm(th.Warm(tree.truncate(10003, 100000000L)))
+  val access = th.pbenchWarm(th.Warm(tree.at(1000000)))
+  println(access)
   println(truncated.entries.take(10).mkString(","))
 }
 

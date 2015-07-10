@@ -96,7 +96,7 @@ object StableSortedTree2 {
     op0(a)
   }
 
-  def truncate[K, V](a: Node[K, V], i: IntervalSeq[K])(implicit p: Partitioner[K], xor: Monoid[V]): Node[K, V] = {
+  def truncate[K, V](a: Node[K, V], min: K, max: K)(implicit p: Partitioner[K], f: AdditiveGroup[K], xor: Monoid[V]): Node[K, V] = {
     implicit def keyOrder = p.o
     def nodeAbove(l: Node[K, V], r: Node[K, V]): Branch[K, V] = {
       require(l.p < r.p)
@@ -105,31 +105,34 @@ object StableSortedTree2 {
     }
     def truncate0(a: Node[K, V]): Node[K, V] = a match {
       case a: Leaf[K, V] =>
-        val at_p = i.at(a.p)
-        val above_p = i.above(a.p)
-        if (at_p && above_p)
+        if(a.p > min && a.p < max)
           a
-        else if (at_p || above_p) {
+        else if (a.p === min) {
           val above0 = xor.op(a.sign, a.at)
-          val at1 = if (at_p) a.at else xor.id
-          val above1 = if (above_p) above0 else xor.id
+          val at1 = xor.id
+          val above1 = above0
           val sign1 = xor.op(at1, above1)
           Leaf(a.p, at1, sign1)
         } else
           null
       case a: Branch[K, V] =>
-        // todo: cutoff!
-        val l1 = truncate0(a.l)
-        val r1 = truncate0(a.r)
-        if ((l1 eq a.l) && (r1 eq a.r))
+        if((a.p - a.hw >= min) && (a.p + a.hw <= max))
           a
+        else if((a.p + a.hw < min) || (a.p - a.hw > max))
+          null
         else {
-          val l1_defined = l1 ne null
-          val r1_defined = r1 ne null
-          if (l1_defined && r1_defined) nodeAbove(l1, r1)
-          else if (l1_defined) l1
-          else if (r1_defined) r1
-          else null
+          val l1 = truncate0(a.l)
+          val r1 = truncate0(a.r)
+          if ((l1 eq a.l) && (r1 eq a.r))
+            a
+          else {
+            val l1_defined = l1 ne null
+            val r1_defined = r1 ne null
+            if (l1_defined && r1_defined) nodeAbove(l1, r1)
+            else if (l1_defined) l1
+            else if (r1_defined) r1
+            else null
+          }
         }
     }
     truncate0(a)

@@ -1,6 +1,6 @@
 package com.rklaehn.interval
 
-import spire.algebra.{Monoid, Order}
+import spire.algebra._
 
 import spire.implicits._
 import Order.ordering
@@ -419,8 +419,8 @@ class IntervalsTrie[K, V] private (val belowAll: HashSet[V], private val root: N
     m.op(belowAll, delta(root))
   }
 
-  def truncate(min: K, max: K): IntervalsTrie[K, V] = {
-    val tree1 = StableSortedTree2.truncate(root, IntervalSeq(Interval.open(min, max)))
+  def truncate(min: K, max: K)(implicit f: AdditiveGroup[K]): IntervalsTrie[K, V] = {
+    val tree1 = StableSortedTree2.truncate(root, min, max)
     val atmin = StableSortedTree2.Leaf(min, at(min), at(min))
     val atmax = StableSortedTree2.Leaf(max, m.id, at(max))
     val tree2 = StableSortedTree2.merge(tree1, atmin)
