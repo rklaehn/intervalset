@@ -1,7 +1,7 @@
 package com.rklaehn.interval
 
 import language.implicitConversions
-import spire.algebra.Order
+import spire.algebra.{Eq, Bool, Order}
 import spire.math.Interval
 import spire.math.interval._
 import spire.algebra.Order.ordering
@@ -10,10 +10,10 @@ import spire.implicits._
 import scala.collection.AbstractTraversable
 import scala.collection.immutable.SortedSet
 
-sealed abstract class IntervalsSet[K: Order, V: Order] { lhs ⇒
+sealed abstract class IntervalsSet[K: Order, V: IntervalsSet.Value] { lhs ⇒
   import IntervalsSet._
 
-  def belowAll: SortedSet[V]
+  def belowAll: V
 
   def ^(rhs: IntervalsSet[K, V]): IntervalsSet[K, V] =
     new Xor[K, V](lhs, rhs).result
@@ -24,17 +24,30 @@ sealed abstract class IntervalsSet[K: Order, V: Order] { lhs ⇒
   def |(rhs: IntervalsSet[K, V]): IntervalsSet[K, V] =
     new Or[K, V](lhs, rhs).result
 
-  def intervals: Traversable[(Interval[K], SortedSet[V])]
+  def intervals: Traversable[(Interval[K], V)]
 }
 
 object IntervalsSet {
 
+  trait Value[V] {
+    def zero: V
+    def isZero(x: V): Boolean
+    def xor(a: V, b: V): V
+    def and(a: V, b: V): V
+    def or(a: V, b: V): V
+    def andNot(a: V, b: V): V
+  }
+
+  object Value {
+    implicit def apply[V: Value]: Value[V] = implicitly[Value[V]]
+  }
+
   private implicit def intervalsSetIsImpl[K, V](x: IntervalsSet[K, V]): Impl[K, V] =
     x.asInstanceOf[Impl[K, V]]
 
-  private final class Impl[K: Order, V: Order](
-      val belowAll: SortedSet[V],
-      val changes: Array[IntervalsSet.Change[K, V]]) extends IntervalsSet[K, V] { lhs ⇒
+  private final class Impl[K, V](
+      val belowAll: V,
+      val changes: Array[IntervalsSet.Change[K, V]])(implicit order: Order[K], v: Value[V]) extends IntervalsSet[K, V] { lhs ⇒
 
     override def equals(rhs: Any)= rhs match {
       case rhs: Impl[K, V] =>
@@ -50,18 +63,18 @@ object IntervalsSet {
       s"IntervalsSet($belowAll, ${changes.toIndexedSeq})"
 
 
-    def intervals = new AbstractTraversable[(Interval[K], SortedSet[V])] {
-      override def foreach[U](f: ((Interval[K], SortedSet[V])) => U): Unit = foreachInterval(f)
+    def intervals = new AbstractTraversable[(Interval[K], V)] {
+      override def foreach[U](f: ((Interval[K], V)) => U): Unit = foreachInterval(f)
     }
 
-    private def foreachInterval[U](f:((Interval[K], SortedSet[V])) => U) : Unit = {
+    private def foreachInterval[U](f:((Interval[K], V)) => U) : Unit = {
       var prevBound: Bound[K] = Unbound[K]()
-      var prevValue: SortedSet[V] = belowAll
+      var prevValue: V = belowAll
       for(c <- changes) {
         val below = prevValue
-        val at = xor(below, c.below)
-        val above = xor(at, c.above)
-        prevBound = (!c.below.isEmpty, !c.above.isEmpty) match {
+        val at = v.xor(below, c.below)
+        val above = v.xor(at, c.above)
+        prevBound = (!v.isZero(c.below), !v.isZero(c.above)) match {
           case (true, true) ⇒
             // change both below and above. We have to produce a point
             f((Interval.fromBounds(prevBound, Open(c.x)), below))
@@ -85,48 +98,49 @@ object IntervalsSet {
     }
   }
 
-  def constant[K: Order, V: Order](value: V): IntervalsSet[K, V] =
-    IntervalsSet(SortedSet(value), Array.empty[Change[K, V]])
+  def constant[K: Order, V: Value](value: V): IntervalsSet[K, V] =
+    IntervalsSet(value, Array.empty[Change[K, V]])
 
-  def empty[K: Order, V: Order]: IntervalsSet[K, V] =
-    IntervalsSet(SortedSet.empty[V], Array.empty[Change[K, V]])
+  def empty[K: Order, V: Value]: IntervalsSet[K, V] =
+    IntervalsSet(Value[V].zero, Array.empty[Change[K, V]])
 
-  def point[K: Order, V: Order](x: K, value: V): IntervalsSet[K, V] = {
-    val empty = SortedSet.empty[V]
-    val delta = SortedSet(value)
+  def point[K: Order, V: Value](x: K, value: V): IntervalsSet[K, V] = {
+    val empty = Value[V].zero
+    val delta = value
     IntervalsSet(empty, Array(Change(x, delta, delta)))
   }
 
-  def hole[K: Order, V: Order](x: K, value: V): IntervalsSet[K, V] = {
-    val delta = SortedSet(value)
+  def hole[K: Order, V: Value](x: K, value: V): IntervalsSet[K, V] = {
+    val empty = Value[V].zero
+    val delta = value
     IntervalsSet(delta, Array(Change(x, delta, delta)))
   }
 
-  def atOrAbove[K: Order, V: Order](x: K, value: V): IntervalsSet[K, V] =  {
-    val empty = SortedSet.empty[V]
-    val delta = SortedSet(value)
+  def atOrAbove[K: Order, V: Value](x: K, value: V): IntervalsSet[K, V] =  {
+    val empty = Value[V].zero
+    val delta = value
     IntervalsSet(empty, Array(Change(x, delta, empty)))
   }
 
-  def above[K: Order, V: Order](x: K, value: V): IntervalsSet[K, V] =  {
-    val empty = SortedSet.empty[V]
-    val delta = SortedSet[V](value)
+  def above[K: Order, V: Value](x: K, value: V): IntervalsSet[K, V] =  {
+    val empty = Value[V].zero
+    val delta = value
     IntervalsSet[K, V](empty, Array(Change(x, empty, delta)))
   }
 
-  def atOrBelow[K: Order, V: Order](x: K, value: V): IntervalsSet[K, V] =  {
-    val empty = SortedSet.empty[V]
-    val delta = SortedSet(value)
+  def atOrBelow[K: Order, V: Value](x: K, value: V): IntervalsSet[K, V] =  {
+    val empty = Value[V].zero
+    val delta = value
     IntervalsSet(delta, Array(Change(x, empty, delta)))
   }
 
-  def below[K: Order, V: Order](x: K, value: V): IntervalsSet[K, V] =  {
-    val empty = SortedSet.empty[V]
-    val delta = SortedSet(value)
+  def below[K: Order, V: Value](x: K, value: V): IntervalsSet[K, V] =  {
+    val empty = Value[V].zero
+    val delta = value
     IntervalsSet(delta, Array(Change(x, delta, empty)))
   }
 
-  def apply[K: Order, V: Order](interval: Interval[K], value: V): IntervalsSet[K, V] = interval.fold {
+  def apply[K: Order, V: Value](interval: Interval[K], value: V): IntervalsSet[K, V] = interval.fold {
     case (Closed(a),    Closed(b)) if a == b => point(a, value)
     case (Unbound(),    Open(x))      => below(x, value)
     case (Unbound(),    Closed(x))    => atOrBelow(x, value)
@@ -140,40 +154,54 @@ object IntervalsSet {
     case (EmptyBound(), EmptyBound()) => empty[K, V]
   }
 
-  private def fromTo[K: Order, V: Order](a: Change[K, V], b: Change[K, V]): IntervalsSet[K, V] =
-    IntervalsSet(SortedSet.empty[V], Array(a, b))
+  private def fromTo[K: Order, V: Value](a: Change[K, V], b: Change[K, V]): IntervalsSet[K, V] =
+    IntervalsSet(Value[V].zero, Array(a, b))
 
-  private def apply[K: Order, V: Order](belowAll: SortedSet[V], changes: Array[Change[K, V]]) =
+  private def apply[K: Order, V: Value](belowAll: V, changes: Array[Change[K, V]]) =
     new Impl[K, V](belowAll, changes)
 
-  case class Change[K, V](x: K, below: SortedSet[V], above: SortedSet[V]) {
+  case class Change[K, V](x: K, below: V, above: V) {
 
-    def isZero: Boolean = below.isEmpty && above.isEmpty
+    def isZero(implicit v: Value[V]): Boolean = v.isZero(below) && v.isZero(above)
   }
 
   object Change {
 
     implicit def eqv[K, V]: spire.algebra.Eq[Change[K, V]] = spire.optional.genericEq.generic[Change[K, V]]
 
-    def below[K: Order, V: Order](x: K, value: V): Change[K, V] =
-      Change(x, SortedSet(value), SortedSet.empty[V])
+    def below[K: Order, V: Value](x: K, value: V): Change[K, V] = {
+      val empty = Value[V].zero
+      val delta = value
+      Change(x, delta, empty)
+    }
 
-    def above[K: Order, V: Order](x: K, value: V): Change[K, V] =
-      Change(x, SortedSet.empty[V], SortedSet(value))
+    def above[K: Order, V: Value](x: K, value: V): Change[K, V] = {
+      val empty = Value[V].zero
+      val delta = value
+      Change(x, empty, delta)
+    }
 
   }
 
   private abstract class MergeOperation[K, V] {
 
+    def and(a: V, b: V): V = vValue.and(a, b)
+
+    def or(a: V, b: V): V = vValue.or(a, b)
+
+    def xor(a: V, b: V): V = vValue.xor(a, b)
+
+    def andNot(a: V, b: V) = vValue.andNot(a, b)
+
     def kOrder: Order[K]
 
-    def vOrder: Order[V]
+    def vValue: Value[V]
 
     def lhs:Impl[K, V]
 
     def rhs:Impl[K, V]
 
-    def r0:SortedSet[V]
+    def r0:V
 
     protected[this] val as = lhs.changes
 
@@ -251,7 +279,7 @@ object IntervalsSet {
     }
 
     def add(c: Change[K, V]): Unit = {
-      if(!c.isZero) {
+      if(!c.isZero(vValue)) {
         rs(ri) = c
         ri += 1
       }
@@ -259,18 +287,18 @@ object IntervalsSet {
 
     def result : IntervalsSet[K, V] = {
       merge0(0, as.length, 0, bs.length)
-      IntervalsSet(r0, rs.take(ri))(kOrder, vOrder)
+      IntervalsSet(r0, rs.take(ri))(kOrder, vValue)
     }
   }
 
-  private final class Xor[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vOrder: Order[V]) extends MergeOperation[K, V] {
+  private final class Xor[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends MergeOperation[K, V] {
 
     def r0 = xor(lhs.belowAll, rhs.belowAll)
 
     def collision(ai: Int, bi: Int) = {
       val ae = as(ai)
       val be = bs(bi)
-      add(Change(ae.x, xor(ae.below, be.below), xor(ae.above, be.above)))
+      add(Change(ae.x, vValue.xor(ae.below, be.below), vValue.xor(ae.above, be.above)))
     }
 
     def fromB(a: Int, b0: Int, b1: Int) = copyB(b0, b1)
@@ -278,7 +306,7 @@ object IntervalsSet {
     def fromA(a0: Int, a1: Int, b: Int) = copyA(a0, a1)
   }
 
-  private final class And[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vOrder: Order[V]) extends MergeOperation[K, V] {
+  private final class And[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends MergeOperation[K, V] {
 
     def r0 = and(lhs.belowAll, rhs.belowAll)
     var aCurr = lhs.belowAll
@@ -326,7 +354,7 @@ object IntervalsSet {
     }
   }
 
-  private final class Or[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vOrder: Order[V]) extends MergeOperation[K, V] {
+  private final class Or[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends MergeOperation[K, V] {
 
     def r0 = or(lhs.belowAll, rhs.belowAll)
     var aCurr = lhs.belowAll
@@ -352,7 +380,7 @@ object IntervalsSet {
       while(i < b1) {
         val b = bs(i)
         // add result
-        add(Change(b.x, b.below diff aCurr, b.above diff aCurr))
+        add(Change(b.x, andNot(b.below, aCurr), andNot(b.above, aCurr)))
         // update bCurr
         bCurr = xor(bCurr, b.below)
         bCurr = xor(bCurr, b.above)
@@ -365,7 +393,7 @@ object IntervalsSet {
       while(i < a1) {
         val a = as(i)
         // add result
-        add(Change(a.x, a.below diff bCurr, a.above diff bCurr))
+        add(Change(a.x, andNot(a.below, bCurr), andNot(a.above, bCurr)))
         // update aCurr
         aCurr = xor(aCurr, a.below)
         aCurr = xor(aCurr, a.above)
