@@ -7,7 +7,7 @@ import spire.math.Interval
 import spire.util.Opt
 
 import scala.collection.AbstractTraversable
-import scala.collection.immutable.HashSet
+import scala.collection.immutable.{SortedSet, HashSet}
 
 object StableSortedTree2 {
 

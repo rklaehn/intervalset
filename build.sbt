@@ -18,6 +18,8 @@ libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
 
 libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.11.6" % "test"
 
+libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.5" % "test"
+
 unmanagedBase in Test <<= baseDirectory { base => base / "test-lib" }
 
 coverageMinimum := 100
