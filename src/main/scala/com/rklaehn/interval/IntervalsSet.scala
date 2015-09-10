@@ -25,11 +25,13 @@ sealed abstract class IntervalsSet[K: Order, V: IntervalsSet.Value] { lhs ⇒
     new Or[K, V](lhs, rhs).result
 
   def intervals: Traversable[(Interval[K], V)]
+
+  def all: V
 }
 
 object IntervalsSet {
 
-  trait Value[V] {
+  trait Value[@specialized(Boolean) V] {
     def zero: V
     def isZero(x: V): Boolean
     def xor(a: V, b: V): V
@@ -39,7 +41,37 @@ object IntervalsSet {
   }
 
   object Value {
+
     implicit def apply[V: Value]: Value[V] = implicitly[Value[V]]
+
+    implicit object booleanIsValue extends Value[Boolean] {
+
+      def zero = false
+
+      def andNot(a: Boolean, b: Boolean) = a & (!b)
+
+      def or(a: Boolean, b: Boolean) = a | b
+
+      def and(a: Boolean, b: Boolean) = a & b
+
+      def xor(a: Boolean, b: Boolean) = a ^ b
+
+      def isZero(x: Boolean) = !x
+    }
+
+    implicit def sortedSetIsValue[T: Order]: Value[SortedSet[T]] = new Value[SortedSet[T]] {
+      def zero = SortedSet.empty[T]
+
+      def andNot(a: SortedSet[T], b: SortedSet[T]) = a diff b
+
+      def or(a: SortedSet[T], b: SortedSet[T]) = a union b
+
+      def and(a: SortedSet[T], b: SortedSet[T]) = a intersect b
+
+      def xor(a: SortedSet[T], b: SortedSet[T]) = (a diff b) union (b diff a)
+
+      def isZero(x: SortedSet[T]) = x.isEmpty
+    }
   }
 
   private implicit def intervalsSetIsImpl[K, V](x: IntervalsSet[K, V]): Impl[K, V] =
@@ -56,12 +88,16 @@ object IntervalsSet {
         false
     }
 
+    def all = changes.foldLeft(belowAll) {
+      case (a, c) ⇒
+        v.or(a, v.or(c.below, c.above))
+    }
+
     override def hashCode: Int =
       (belowAll.hashCode, changes.toIndexedSeq.hashCode).hashCode
 
     override def toString: String =
       s"IntervalsSet($belowAll, ${changes.toIndexedSeq})"
-
 
     def intervals = new AbstractTraversable[(Interval[K], V)] {
       override def foreach[U](f: ((Interval[K], V)) => U): Unit = foreachInterval(f)
@@ -157,8 +193,10 @@ object IntervalsSet {
   private def fromTo[K: Order, V: Value](a: Change[K, V], b: Change[K, V]): IntervalsSet[K, V] =
     IntervalsSet(Value[V].zero, Array(a, b))
 
-  private def apply[K: Order, V: Value](belowAll: V, changes: Array[Change[K, V]]) =
-    new Impl[K, V](belowAll, changes)
+  private def apply[K: Order, V: Value](belowAll: V, changes: Array[Change[K, V]]) = {
+    val changes1 = changes.filterNot(_.isZero)
+    new Impl[K, V](belowAll, changes1)
+  }
 
   case class Change[K, V](x: K, below: V, above: V) {
 
@@ -401,10 +439,4 @@ object IntervalsSet {
       }
     }
   }
-
-  private def or[T](a:SortedSet[T], b: SortedSet[T]): SortedSet[T] = a union b
-
-  private def and[T](a:SortedSet[T], b: SortedSet[T]): SortedSet[T] = a intersect b
-
-  private def xor[T](a:SortedSet[T], b: SortedSet[T]): SortedSet[T] = (a diff b) union (b diff a)
 }
