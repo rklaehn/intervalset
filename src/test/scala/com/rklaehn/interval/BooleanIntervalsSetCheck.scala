@@ -9,7 +9,7 @@ object BooleanIntervalsSetCheck extends Properties("BooleanIntervalsSetConsisten
   implicit val arb = IntervalSeqArbitrary.arbitrary
 
   private def toIntervalsSet(x: IntervalSeq[Long]): IntervalsSet[Long, Boolean] =
-    x.intervals.map(IntervalsSet[Long, Boolean](_, true)).foldLeft(IntervalsSet.empty[Long, Boolean])(_ ^ _)
+    x.intervals.map(IntervalsSet[Long, Boolean](_, true)).foldLeft(IntervalsSet.empty[Long, Boolean])(_ | _)
 
   private def toIntervalSeq(x: IntervalsSet[Long, Boolean]): IntervalSeq[Long] =
     x.intervals.filter(_._2).foldLeft(IntervalSeq.empty[Long]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
@@ -24,7 +24,8 @@ object BooleanIntervalsSetCheck extends Properties("BooleanIntervalsSetConsisten
     val reference = a ^ b
     val as = toIntervalsSet(a)
     val bs = toIntervalsSet(b)
-    val result = toIntervalSeq(as ^ bs)
+    val rs = as ^ bs
+    val result = toIntervalSeq(rs)
     result == reference
   }
 
