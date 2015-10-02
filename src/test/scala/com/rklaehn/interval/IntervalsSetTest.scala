@@ -7,8 +7,8 @@ import spire.math.Rational
 class IntervalsSetTest extends FunSuite {
 
   test("constant") {
-    val a = IntervalsSet.empty[Int, Boolean]
-    val b = IntervalsSet.constant[Int, Boolean](true)
+    val a = IntervalMap.empty[Int, Boolean]
+    val b = IntervalMap.constant[Int, Boolean](true)
     assert((a ^ b) == b)
     assert((a | b) == b)
     assert((a & b) == a)
@@ -16,8 +16,8 @@ class IntervalsSetTest extends FunSuite {
   }
 
   test("simple") {
-    val a = IntervalsSet.empty[Int, Boolean]
-    val b = IntervalsSet.below(0, true)
+    val a = IntervalMap.empty[Int, Boolean]
+    val b = IntervalMap.below(0, true)
     assert((a ^ b) == b)
     assert((a | b) == b)
     assert((a & b) == a)
@@ -25,11 +25,11 @@ class IntervalsSetTest extends FunSuite {
   }
 
   test("check") {
-    def toIntervalsSet(x: IntervalSeq[Rational]): IntervalsSet[Rational, Boolean] =
-      x.intervals.map(IntervalsSet[Rational, Boolean](_, true)).foldLeft(IntervalsSet.empty[Rational, Boolean])(_ | _)
+    def toIntervalsSet(x: IntervalSeq[Rational]): IntervalMap[Rational, Boolean] =
+      x.intervals.map(IntervalMap[Rational, Boolean](_, true)).foldLeft(IntervalMap.empty[Rational, Boolean])(_ | _)
 
-    def toIntervalSeq(x: IntervalsSet[Rational, Boolean]): IntervalSeq[Rational] =
-      x.intervals.filter(_._2).foldLeft(IntervalSeq.empty[Rational]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
+    def toIntervalSeq(x: IntervalMap[Rational, Boolean]): IntervalSeq[Rational] =
+      x.entries.filter(_._2).foldLeft(IntervalSeq.empty[Rational]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
 
     val a = IntervalSeq("[13, ∞)")
     val b = IntervalSeq("[19, ∞)")

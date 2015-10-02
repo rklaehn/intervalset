@@ -20,6 +20,8 @@ libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.11.6" % "test"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.5" % "test"
 
+libraryDependencies += "com.rklaehn" %% "abc" % "0.1-SNAPSHOT" % "test"
+
 unmanagedBase in Test <<= baseDirectory { base => base / "test-lib" }
 
 coverageMinimum := 100

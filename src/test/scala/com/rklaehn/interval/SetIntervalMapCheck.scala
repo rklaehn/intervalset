@@ -6,27 +6,27 @@ import spire.implicits._
 
 import scala.collection.immutable.SortedSet
 
-object SetIntervalsSetCheck extends Properties("SetIntervalsSetConsistentWithIntervalSeq") {
+object SetIntervalMapCheck extends Properties("SetIntervalsSetConsistentWithIntervalSeq") {
 
   implicit val arb = IntervalSeqArbitrary.arbitrary
 
-  private def toIntervalsSet(x: IntervalSeq[Long], value: Int): IntervalsSet[Long, SortedSet[Int]] =
-    x.intervals.map(IntervalsSet[Long, SortedSet[Int]](_, SortedSet(value))).foldLeft(IntervalsSet.empty[Long, SortedSet[Int]])(_ ^ _)
+  private def toIntervalMap(x: IntervalSeq[Long], value: Int): IntervalMap[Long, SortedSet[Int]] =
+    IntervalMap(x.intervals.toSeq.map(_ → SortedSet(value)): _*)
 
-  private def toIntervalSeq(x: IntervalsSet[Long, SortedSet[Int]], value: Int): IntervalSeq[Long] =
-    x.intervals.filter(_._2.contains(value)).foldLeft(IntervalSeq.empty[Long]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
+  private def toIntervalSeq(x: IntervalMap[Long, SortedSet[Int]], value: Int): IntervalSeq[Long] =
+    x.entries.filter(_._2.contains(value)).foldLeft(IntervalSeq.empty[Long]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
 
-  def toIntervalsSet(m: Map[Int, IntervalSeq[Long]]): IntervalsSet[Long, SortedSet[Int]] = {
-    val empty = IntervalsSet.empty[Long, SortedSet[Int]]
+  def toIntervalsSet(m: Map[Int, IntervalSeq[Long]]): IntervalMap[Long, SortedSet[Int]] = {
+    val empty = IntervalMap.empty[Long, SortedSet[Int]]
     m.foldLeft(empty) { case (a, (v, i)) ⇒
-      a ^ toIntervalsSet(i, v)
+      a ^ toIntervalMap(i, v)
     }
   }
 
   def binarySampleTest(
       am: Map[Int, IntervalSeq[Long]],
       bm: Map[Int, IntervalSeq[Long]],
-      op: (IntervalsSet[Long, SortedSet[Int]], IntervalsSet[Long, SortedSet[Int]]) ⇒ IntervalsSet[Long, SortedSet[Int]],
+      op: (IntervalMap[Long, SortedSet[Int]], IntervalMap[Long, SortedSet[Int]]) ⇒ IntervalMap[Long, SortedSet[Int]],
       reference: (IntervalSeq[Long], IntervalSeq[Long]) ⇒ IntervalSeq[Long]): Boolean = {
     val as = toIntervalsSet(am)
     val bs = toIntervalsSet(bm)
@@ -41,7 +41,7 @@ object SetIntervalsSetCheck extends Properties("SetIntervalsSetConsistentWithInt
 
   def unarySampleTest(
       am: Map[Int, IntervalSeq[Long]],
-      op: IntervalsSet[Long, SortedSet[Int]] ⇒ IntervalsSet[Long, SortedSet[Int]],
+      op: IntervalMap[Long, SortedSet[Int]] ⇒ IntervalMap[Long, SortedSet[Int]],
       reference: IntervalSeq[Long] ⇒ IntervalSeq[Long]): Boolean = {
     val as = toIntervalsSet(am)
     val rs = op(as)
