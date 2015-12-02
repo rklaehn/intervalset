@@ -1,6 +1,6 @@
 # intervalsets
 
-Efficient immutable interval sets for [spire](https://github.com/non/spire)
+Efficient immutable interval sets for [spire](https://github.com/non/spire). Two of these data structures have since been included into spire-extras.
 
 [![Build Status](https://travis-ci.org/rklaehn/intervalset.png)](https://travis-ci.org/rklaehn/intervalset)
 [![codecov.io](http://codecov.io/github/rklaehn/intervalset/coverage.svg?branch=master)](http://codecov.io/github/rklaehn/intervalset?branch=master)
