@@ -6,7 +6,7 @@ import spire.laws.LogicLaws
 
 object IntervalSeqLogicLawsCheck extends Properties("IntervalSeq") with AddProperties {
 
-  val algebra = IntervalSeqAlgebra.booleanAlgebra[Long]
+  val algebra = IntervalSeqAlgebra.booleanAlgebra[Int]
 
   val arb = IntervalSeqArbitrary.arbitrary
 

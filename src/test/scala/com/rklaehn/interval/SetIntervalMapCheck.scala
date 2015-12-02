@@ -10,14 +10,14 @@ object SetIntervalMapCheck extends Properties("SetIntervalsSetConsistentWithInte
 
   implicit val arb = IntervalSeqArbitrary.arbitrary
 
-  private def toIntervalMap(x: IntervalSeq[Long], value: Int): IntervalMap[Long, SortedSet[Int]] =
+  private def toIntervalMap(x: IntervalSeq[Int], value: Int): IntervalMap[Int, SortedSet[Int]] =
     IntervalMap(x.intervals.toSeq.map(_ → SortedSet(value)): _*)
 
-  private def toIntervalSeq(x: IntervalMap[Long, SortedSet[Int]], value: Int): IntervalSeq[Long] =
-    x.entries.filter(_._2.contains(value)).foldLeft(IntervalSeq.empty[Long]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
+  private def toIntervalSeq(x: IntervalMap[Int, SortedSet[Int]], value: Int): IntervalSeq[Int] =
+    x.entries.filter(_._2.contains(value)).foldLeft(IntervalSeq.empty[Int]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
 
-  def toIntervalsSet(m: Map[Int, IntervalSeq[Long]]): IntervalMap[Long, SortedSet[Int]] = {
-    val empty = IntervalMap.empty[Long, SortedSet[Int]]
+  def toIntervalsSet(m: Map[Int, IntervalSeq[Int]]): IntervalMap[Int, SortedSet[Int]] = {
+    val empty = IntervalMap.zero[Int, SortedSet[Int]]
     m.foldLeft(empty) {
       case (a, (v, i)) ⇒
         a ^ toIntervalMap(i, v)
@@ -25,37 +25,37 @@ object SetIntervalMapCheck extends Properties("SetIntervalsSetConsistentWithInte
   }
 
   def binarySampleTest(
-    am: Map[Int, IntervalSeq[Long]],
-    bm: Map[Int, IntervalSeq[Long]],
-    op: (IntervalMap[Long, SortedSet[Int]], IntervalMap[Long, SortedSet[Int]]) ⇒ IntervalMap[Long, SortedSet[Int]],
-    reference: (IntervalSeq[Long], IntervalSeq[Long]) ⇒ IntervalSeq[Long]
+    am: Map[Int, IntervalSeq[Int]],
+    bm: Map[Int, IntervalSeq[Int]],
+    op: (IntervalMap[Int, SortedSet[Int]], IntervalMap[Int, SortedSet[Int]]) ⇒ IntervalMap[Int, SortedSet[Int]],
+    reference: (IntervalSeq[Int], IntervalSeq[Int]) ⇒ IntervalSeq[Int]
   ): Boolean = {
     val as = toIntervalsSet(am)
     val bs = toIntervalsSet(bm)
     val rs = op(as, bs)
     (am.keys ++ bm.keys).forall { k ⇒
-      val ai = am.getOrElse(k, IntervalSeq.empty[Long])
-      val bi = bm.getOrElse(k, IntervalSeq.empty[Long])
+      val ai = am.getOrElse(k, IntervalSeq.empty[Int])
+      val bi = bm.getOrElse(k, IntervalSeq.empty[Int])
       val ri = toIntervalSeq(rs, k)
       reference(ai, bi) == ri
     }
   }
 
   def unarySampleTest(
-    am: Map[Int, IntervalSeq[Long]],
-    op: IntervalMap[Long, SortedSet[Int]] ⇒ IntervalMap[Long, SortedSet[Int]],
-    reference: IntervalSeq[Long] ⇒ IntervalSeq[Long]
+    am: Map[Int, IntervalSeq[Int]],
+    op: IntervalMap[Int, SortedSet[Int]] ⇒ IntervalMap[Int, SortedSet[Int]],
+    reference: IntervalSeq[Int] ⇒ IntervalSeq[Int]
   ): Boolean = {
     val as = toIntervalsSet(am)
     val rs = op(as)
-    (am.keys).forall { k ⇒
-      val ai = am.getOrElse(k, IntervalSeq.empty[Long])
+    am.keys.forall { k ⇒
+      val ai = am.getOrElse(k, IntervalSeq.empty[Int])
       val ri = toIntervalSeq(rs, k)
       reference(ai) == ri
     }
   }
 
-  property("roundtrip") = forAll { xm: Map[Int, IntervalSeq[Long]] ⇒
+  property("roundtrip") = forAll { xm: Map[Int, IntervalSeq[Int]] ⇒
     val combined = toIntervalsSet(xm)
     xm.forall {
       case (v, i) ⇒
@@ -63,15 +63,15 @@ object SetIntervalMapCheck extends Properties("SetIntervalsSetConsistentWithInte
     }
   }
 
-  property("xor") = forAll { (am: Map[Int, IntervalSeq[Long]], bm: Map[Int, IntervalSeq[Long]]) ⇒
+  property("xor") = forAll { (am: Map[Int, IntervalSeq[Int]], bm: Map[Int, IntervalSeq[Int]]) ⇒
     binarySampleTest(am, bm, _ ^ _, _ ^ _)
   }
 
-  property("and") = forAll { (am: Map[Int, IntervalSeq[Long]], bm: Map[Int, IntervalSeq[Long]]) ⇒
+  property("and") = forAll { (am: Map[Int, IntervalSeq[Int]], bm: Map[Int, IntervalSeq[Int]]) ⇒
     binarySampleTest(am, bm, _ & _, _ & _)
   }
 
-  property("or") = forAll { (am: Map[Int, IntervalSeq[Long]], bm: Map[Int, IntervalSeq[Long]]) ⇒
+  property("or") = forAll { (am: Map[Int, IntervalSeq[Int]], bm: Map[Int, IntervalSeq[Int]]) ⇒
     binarySampleTest(am, bm, _ | _, _ | _)
   }
 }

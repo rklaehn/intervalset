@@ -14,6 +14,10 @@ class IntervalMapTest extends FunSuite {
     assert(c.entries.head === Interval.below(1) -> true)
     assert(c.entries.last === Interval.above(1) -> true)
     assert(d.entries.head === Interval.atOrBelow(1) -> true)
-    assert((a & b) === IntervalMap.empty[Int, Boolean])
+    assert((a & b) === IntervalMap.zero[Int, Boolean])
+  }
+
+  test("equalsWrongType") {
+    assert(IntervalMap.zero[Int, Boolean] != "foo")
   }
 }

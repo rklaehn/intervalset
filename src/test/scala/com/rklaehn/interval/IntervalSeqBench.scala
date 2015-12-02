@@ -5,7 +5,7 @@ import spire.syntax.all._
 
 object IntervalSeqBench extends App {
 
-  def makeOnOffProfile(n: Int, offset: Long = 0, stride: Long = 2) = {
+  def makeOnOffProfile(n: Int, offset: Int = 0, stride: Int = 2) = {
     val support = (0 until n).map(_ * stride + offset).toArray
     IntervalSeqArbitrary.makeProfileXor(false, support, Array.fill(support.length)(0))
   }
