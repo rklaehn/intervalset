@@ -11,7 +11,7 @@ object IntervalTrieSampleCheck extends Properties("IntervalSet.Sample") {
   implicit def arb = IntervalTrieArbitrary.arbitrary
 
   // a test that works by sampling the result at all relevant places and checks consistency with the boolean operation
-  def unarySampleTest(a:IntervalTrie[Long], r:IntervalTrie[Long], op:Boolean => Boolean) = {
+  def unarySampleTest(a: IntervalTrie[Long], r: IntervalTrie[Long], op: Boolean => Boolean) = {
     val support = a.edges.toArray.sorted.distinct
     support.forall { value =>
       val sameBefore = r.below(value) === op(a.below(value))
@@ -22,7 +22,7 @@ object IntervalTrieSampleCheck extends Properties("IntervalSet.Sample") {
   }
 
   // a test that works by sampling the result at all relevant places and checks consistency with the boolean operation
-  def binarySampleTest(a:IntervalTrie[Long], b:IntervalTrie[Long], r:IntervalTrie[Long], op:(Boolean, Boolean) => Boolean) = {
+  def binarySampleTest(a: IntervalTrie[Long], b: IntervalTrie[Long], r: IntervalTrie[Long], op: (Boolean, Boolean) => Boolean) = {
     val support = (a.edges ++ b.edges).toArray.sorted.distinct
     support.forall { value =>
       val sameBefore = r.below(value) === op(a.below(value), b.below(value))
@@ -33,7 +33,7 @@ object IntervalTrieSampleCheck extends Properties("IntervalSet.Sample") {
   }
 
   // a test that works by sampling the result at all relevant places and checks consistency with the boolean operation
-  def trinarySampleTest(a:IntervalTrie[Long], b:IntervalTrie[Long], c:IntervalTrie[Long], r:IntervalTrie[Long], op:(Boolean, Boolean, Boolean) => Boolean) = {
+  def trinarySampleTest(a: IntervalTrie[Long], b: IntervalTrie[Long], c: IntervalTrie[Long], r: IntervalTrie[Long], op: (Boolean, Boolean, Boolean) => Boolean) = {
     val support = (a.edges ++ b.edges ++ c.edges).toArray.sorted.distinct
     support.forall { value =>
       val sameBefore = r.below(value) === op(a.below(value), b.below(value), c.below(value))

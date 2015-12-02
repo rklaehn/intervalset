@@ -5,7 +5,7 @@ import spire.algebra.Order
 /**
  * A wrapper for the spire order typeclass that counts invocations of compare
  */
-class CountingOrder[T:Order] extends Order[T] {
+class CountingOrder[T: Order] extends Order[T] {
   val wrapped = implicitly[Order[T]]
   var count = 0
 

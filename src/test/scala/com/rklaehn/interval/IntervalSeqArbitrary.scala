@@ -1,21 +1,21 @@
 package com.rklaehn.interval
 
-import org.scalacheck.{Gen, Arbitrary}
+import org.scalacheck.{ Gen, Arbitrary }
 import spire.implicits._
 
 object IntervalSeqArbitrary {
 
-  def makeProfileXor(initial:Boolean, support:Array[Long], kind:Array[Int]) : IntervalSeq[Long] = {
+  def makeProfileXor(initial: Boolean, support: Array[Long], kind: Array[Int]): IntervalSeq[Long] = {
     require(support.length == kind.length)
     require(kind.forall(x => x >= 0 && x <= 2))
-    def fromKind(x:Long, k:Int) = k match {
+    def fromKind(x: Long, k: Int) = k match {
       case 0 => IntervalSeq.point(x)
       case 1 => IntervalSeq.above(x)
       case 2 => IntervalSeq.atOrAbove(x)
     }
     val r = IntervalSeq.constant[Long](initial)
     (r /: (support zip kind)) {
-      case (current, (x,k)) => current ^ fromKind(x,k)
+      case (current, (x, k)) => current ^ fromKind(x, k)
     }
   }
 
@@ -25,11 +25,10 @@ object IntervalSeqArbitrary {
       edges <- Gen.resize(count, Gen.containerOf[Array, Long](Gen.choose(min, max)))
       support = edges.sorted.distinct
       kind <- Gen.containerOfN[Array, Int](support.length, Gen.oneOf(0, 1, 2))
-    } yield
-      makeProfileXor(initial, support, kind)
+    } yield makeProfileXor(initial, support, kind)
   }
 
-  private def randomProfileGen(size:Int) = Gen.frequency[IntervalSeq[Long]](
+  private def randomProfileGen(size: Int) = Gen.frequency[IntervalSeq[Long]](
     1 -> IntervalSeq.empty[Long],
     1 -> IntervalSeq.all[Long],
     15 -> randomProfileXor(0, 100, size),

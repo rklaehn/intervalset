@@ -16,11 +16,9 @@ object QuickArrayMerge {
       val c = order.compare(midVal, key)
       if (c < 0) {
         low = mid + 1
-      }
-      else if (c > 0) {
+      } else if (c > 0) {
         high = mid - 1
-      }
-      else {
+      } else {
         // scalastyle:off return
         return mid
         // scalastyle:on return
@@ -29,7 +27,7 @@ object QuickArrayMerge {
     -(low + 1)
   }
 
-  def merge[T: Order : ClassTag](a: Array[T], b: Array[T]): Array[T] = /* if(a.length > b.length) merge(b, a) else */ {
+  def merge[T: Order: ClassTag](a: Array[T], b: Array[T]): Array[T] = /* if(a.length > b.length) merge(b, a) else */ {
     val r = new Array[T](a.length + b.length)
 
     def merge0(a0: Int, a1: Int, b0: Int, b1: Int, i: Int): Int = {

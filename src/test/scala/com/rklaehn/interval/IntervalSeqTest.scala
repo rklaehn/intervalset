@@ -1,116 +1,81 @@
 package com.rklaehn.interval
 
-import org.junit.Assert._
-import org.junit.Test
+import org.scalatest.FunSuite
 import spire.implicits._
 
-class IntervalSeqTest {
+class IntervalSeqTest extends FunSuite {
 
   import IntervalSeq._
 
-  //  @Test
-  //  def testIntervalUnion() : Unit = {
-  //    val a = Interval("[14, 44)")
-  //    val b = Interval("(76, ∞)")
-  //    val r1 = Interval("[14, ∞)")
-  //    val r2 = a union b
-  //    println(r1)
-  //    println(r2)
-  //    require(r1 == r2)
-  //  }
-
-  @Test
-  def leafOperationTest(): Unit = {
-    val a = above(1L)
-    val b = atOrAbove(1L)
-    val c = point(1L)
-    val d = hole(1L)
-    assertEquals(atOrAbove(1L), a | b)
-    assertEquals(above(1L), a & b)
-    assertEquals(point(1L), a ^ b)
-    assertEquals(atOrAbove(1L), a | c)
-    assertEquals(empty[Long], a & c)
-    assertEquals(atOrAbove(1L), a ^ c)
-    assertEquals(hole(1L), a | d)
-    assertEquals(above(1L), a & d)
-    assertEquals(below(1L), a ^ d)
+  test("leafOperation") {
+    val a = above(1)
+    val b = atOrAbove(1)
+    val c = point(1)
+    val d = hole(1)
+    assert(atOrAbove(1) == (a | b))
+    assert(above(1) == (a & b))
+    assert(point(1) == (a ^ b))
+    assert(atOrAbove(1) == (a | c))
+    assert(empty[Int] == (a & c))
+    assert(atOrAbove(1) == (a ^ c))
+    assert(hole(1) == (a | d))
+    assert(above(1) == (a & d))
+    assert(below(1) == (a ^ d))
   }
 
-  /*
-  @Test
-  def parseTest(): Unit = {
-    val atext = "[46]"
-//    val atext = "(-∞, 34);(61, 69];(69, ∞)"
-    val b = IntervalSet(atext)
-    val btext = b.toString
-    println(s"$atext $btext")
-  }
-  */
-
-  @Test
-  def atIsSameAsApplyTest(): Unit = {
+  test("atIsSameAsApply") {
     val is = above(1)
-    is.at(1) == is.apply(1)
+    assert(is.at(1) == is.apply(1))
   }
 
-
-  @Test
-  def equalsDifferentTypeTest(): Unit = {
+  test("equalsSameType") {
     val is = above(1)
-    is != "DOH!"
+    assert(is != "DOH!")
   }
 
-  @Test
-  def subsetOfTest(): Unit = {
-    assertTrue(above(1).isSupersetOf(above(1)))
-    assertTrue(atOrAbove(1).isSupersetOf(above(1)))
-    assertFalse(above(1).isSupersetOf(atOrAbove(1)))
+  test("subsetOf") {
+    assert(above(1).isSupersetOf(above(1)))
+    assert(atOrAbove(1).isSupersetOf(above(1)))
+    assert(!above(1).isSupersetOf(atOrAbove(1)))
 
-    assertFalse(above(1).isProperSupersetOf(above(1)))
-    assertTrue(atOrAbove(1).isProperSupersetOf(above(1)))
-    assertFalse(above(1).isProperSupersetOf(atOrAbove(1)))
+    assert(!above(1).isProperSupersetOf(above(1)))
+    assert(atOrAbove(1).isProperSupersetOf(above(1)))
+    assert(!above(1).isProperSupersetOf(atOrAbove(1)))
   }
 
-  @Test
-  def algebraTest(): Unit = {
-    val algebra = IntervalSeqAlgebra.booleanAlgebra[Long]
-    val a = IntervalSeq.above(1L)
-    val b = IntervalSeq.below(1L)
-    assertEquals(a ^ b, algebra.xor(a, b))
+  test("algebra") {
+    val algebra = IntervalSeqAlgebra.booleanAlgebra[Int]
+    val a = IntervalSeq.above(1)
+    val b = IntervalSeq.below(1)
+    assert((a ^ b) == algebra.xor(a, b))
   }
 
-  @Test(expected = classOf[NoSuchElementException])
-  def iteratorAfterEndTest(): Unit = {
-    val all = IntervalSeq.empty[Int]
-    val it = all.intervalIterator
-    it.next()
-  }
-
-  @Test(expected = classOf[IllegalStateException])
-  def wrongStateHullTest1(): Unit = {
-    val t = IntervalSeq.above(1)
-    t.kindsAccessor(0) = 9
-    t.hull
-  }
-
-  @Test(expected = classOf[IllegalStateException])
-  def wrongStateHullTest2(): Unit = {
-    val t = IntervalSeq.below(1)
-    t.kindsAccessor(0) = 9
-    t.hull
-  }
-
-  @Test(expected = classOf[IllegalStateException])
-  def wrongStateIteratorTest1(): Unit = {
-    val t = IntervalSeq.above(1)
-    t.kindsAccessor(0) = 9
-    t.intervalIterator.next()
-  }
-
-  @Test(expected = classOf[IllegalStateException])
-  def wrongStateIteratorTest2(): Unit = {
-    val t = IntervalSeq.below(1)
-    t.kindsAccessor(0) = 9
-    t.intervalIterator.next()
+  test("coverage") {
+    intercept[NoSuchElementException] {
+      val all = IntervalSeq.empty[Int]
+      val it = all.intervalIterator
+      it.next()
+    }
+    intercept[IllegalStateException] {
+      val t = IntervalSeq.above(1)
+      t.kindsAccessor(0) = 9
+      t.hull
+    }
+    intercept[IllegalStateException] {
+      val t = IntervalSeq.below(1)
+      t.kindsAccessor(0) = 9
+      t.hull
+    }
+    intercept[IllegalStateException] {
+      val t = IntervalSeq.above(1)
+      t.kindsAccessor(0) = 9
+      t.intervalIterator.next()
+    }
+    intercept[IllegalStateException] {
+      val t = IntervalSeq.below(1)
+      t.kindsAccessor(0) = 9
+      t.intervalIterator.next()
+    }
+    assert(true)
   }
 }

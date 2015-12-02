@@ -1,35 +1,81 @@
-import scoverage.ScoverageSbtPlugin.ScoverageKeys._
+import ReleaseTransformations._
 
-import CoverallsPlugin.CoverallsKeys._
+lazy val intervalsetSettings = Seq(
+  organization := "com.rklaehn",
+  scalaVersion := "2.11.7",
+  crossScalaVersions := Seq("2.10.5", "2.11.7"),
+  libraryDependencies ++= Seq(
+    "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
+    "org.scalatest" %%% "scalatest" % "3.0.0-M7" % "test",
+    "org.spire-math" %% "spire" % "0.11.0",
+    "org.spire-math" %% "spire-laws" % "0.11.0" % "test",
 
-name := "intervalset"
+    // thyme
+    "ichi.bench" % "thyme" % "0.1.1" % "test" from "https://github.com/Ichoran/thyme/raw/9ff531411e10c698855ade2e5bde77791dd0869a/Thyme.jar"
+  ),
+  scalacOptions ++= Seq(
+    "-deprecation",
+    "-unchecked",
+    "-feature"
+  ),
+  licenses += ("Apache License, Version 2.0", url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
+  homepage := Some(url("http://github.com/rklaehn/intervalset")),
 
-scalaVersion := "2.11.4"
+  // release stuff
+  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
+  releaseCrossBuild := true,
+  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
+  publishMavenStyle := true,
+  publishArtifact in Test := false,
+  pomIncludeRepository := Function.const(false),
+  publishTo <<= version { v =>
+    val nexus = "https://oss.sonatype.org/"
+    if (v.trim.endsWith("SNAPSHOT"))
+      Some("Snapshots" at nexus + "content/repositories/snapshots")
+    else
+      Some("Releases" at nexus + "service/local/staging/deploy/maven2")
+  },
+  pomExtra :=
+    <scm>
+      <url>git@github.com:rklaehn/intervalset.git</url>
+      <connection>scm:git:git@github.com:rklaehn/intervalset.git</connection>
+    </scm>
+      <developers>
+        <developer>
+          <id>r_k</id>
+          <name>R&#xFC;diger Klaehn</name>
+          <url>http://github.com/rklaehn/</url>
+        </developer>
+      </developers>
+  ,
+  releaseProcess := Seq[ReleaseStep](
+    checkSnapshotDependencies,
+    inquireVersions,
+    runClean,
+    ReleaseStep(action = Command.process("package", _)),
+    setReleaseVersion,
+    commitReleaseVersion,
+    tagRelease,
+    ReleaseStep(action = Command.process("publishSigned", _)),
+    setNextVersion,
+    commitNextVersion,
+    ReleaseStep(action = Command.process("sonatypeReleaseAll", _)),
+    pushChanges))
 
-version := "0.1-SNAPSHOT"
+lazy val noPublish = Seq(
+  publish := {},
+  publishLocal := {},
+  publishArtifact := false)
 
-libraryDependencies += "org.spire-math" %% "spire" % "0.9.0"
+lazy val root = project.in(file("."))
+  .aggregate(intervalsetJVM, intervalsetJS)
+  .settings(name := "intervalset-root")
+  .settings(intervalsetSettings: _*)
+  .settings(noPublish: _*)
 
-libraryDependencies += "org.spire-math" %% "spire-scalacheck-binding" % "0.9.0" % "test"
+lazy val intervalset = crossProject.crossType(CrossType.Pure).in(file("."))
+  .settings(name := "intervalset")
+  .settings(intervalsetSettings: _*)
 
-libraryDependencies += "junit" % "junit" % "4.11" % "test"
-
-libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
-
-libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.11.6" % "test"
-
-unmanagedBase in Test <<= baseDirectory { base => base / "test-lib" }
-
-coverageMinimum := 100
-
-coverageFailOnMinimum := true
-
-coverallsTokenFile := "coveralls.token"
-
-scalacOptions ++= Seq("-unchecked", "-feature")
-
-initialCommands in console += """
-import com.rklaehn.interval._
-import spire.math._
-import spire.implicits._
-"""
+lazy val intervalsetJVM = intervalset.jvm
+lazy val intervalsetJS = intervalset.js

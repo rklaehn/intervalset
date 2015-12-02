@@ -13,7 +13,7 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
   implicit def arb = IntervalSeqArbitrary.arbitrary
 
   // a test that works by sampling the result at all relevant places and checks consistency with the boolean operation
-  def unarySampleTest(a:IntervalSeq[Long], r:IntervalSeq[Long], op:Boolean => Boolean) = {
+  def unarySampleTest(a: IntervalSeq[Long], r: IntervalSeq[Long], op: Boolean => Boolean) = {
     val support = a.edges.toArray.sorted.distinct
     support.forall { value =>
       val sameBefore = r.below(value) === op(a.below(value))
@@ -24,7 +24,7 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
   }
 
   // a test that works by sampling the result at all relevant places and checks consistency with the boolean operation
-  def binarySampleTest(a:IntervalSeq[Long], b:IntervalSeq[Long], r:IntervalSeq[Long], op:(Boolean, Boolean) => Boolean) = {
+  def binarySampleTest(a: IntervalSeq[Long], b: IntervalSeq[Long], r: IntervalSeq[Long], op: (Boolean, Boolean) => Boolean) = {
     val support = (a.edges ++ b.edges).toArray.sorted.distinct
     support.forall { value =>
       val sameBefore = r.below(value) === op(a.below(value), b.below(value))
@@ -35,7 +35,7 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
   }
 
   // a test that works by sampling the result at all relevant places and checks consistency with the boolean operation
-  def trinarySampleTest(a:IntervalSeq[Long], b:IntervalSeq[Long], c:IntervalSeq[Long], r:IntervalTrie[Long], op:(Boolean, Boolean, Boolean) => Boolean) = {
+  def trinarySampleTest(a: IntervalSeq[Long], b: IntervalSeq[Long], c: IntervalSeq[Long], r: IntervalTrie[Long], op: (Boolean, Boolean, Boolean) => Boolean) = {
     val support = (a.edges ++ b.edges ++ c.edges).toArray.sorted.distinct
     support.forall { value =>
       val sameBefore = r.below(value) === op(a.below(value), b.below(value), c.below(value))
@@ -64,7 +64,7 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
   property("toStringParse") = forAll { a0: IntervalSeq[Long] =>
     // first convert the interval of long to an interval of rationals, since that is what parse returns
     val rationalIntervals = a0.intervals.map(_.mapBounds(Rational.apply))
-    val a : IntervalSeq[Rational] = (IntervalSeq.empty[Rational] /: rationalIntervals)(_ | IntervalSeq(_))
+    val a: IntervalSeq[Rational] = (IntervalSeq.empty[Rational] /: rationalIntervals)(_ | IntervalSeq(_))
     // then do the roundtrip test like with IntervalSet
     val aText = a.toString
     val b = IntervalSeq(aText)
@@ -113,7 +113,7 @@ object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
   }
 
   property("equals/hashCode") = forAll { (a: IntervalSeq[Long], b: IntervalSeq[Long]) =>
-    if(a==b) a.hashCode == b.hashCode else true
+    if (a == b) a.hashCode == b.hashCode else true
   }
 
   property("iterator") = forAll { a: IntervalSeq[Long] =>

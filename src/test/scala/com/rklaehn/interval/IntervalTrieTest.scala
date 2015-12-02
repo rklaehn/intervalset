@@ -1,74 +1,51 @@
 package com.rklaehn.interval
 
-import org.junit.Assert._
-import org.junit.Test
+import org.scalatest.FunSuite
 import spire.algebra.Order
 import spire.math.interval.Closed
 import spire.math._
 
-class IntervalTrieTest {
+class IntervalTrieTest extends FunSuite {
 
   import IntervalTrie._
 
-//  @Test
-//  def testIntervalUnion() : Unit = {
-//    val a = Interval("[14, 44)")
-//    val b = Interval("(76, ∞)")
-//    val r1 = Interval("[14, ∞)")
-//    val r2 = a union b
-//    println(r1)
-//    println(r2)
-//    require(r1 == r2)
-//  }
-
-  @Test
-  def leafOperationTest(): Unit = {
+  test("leafOperation") {
     val a = above(1L)
     val b = atOrAbove(1L)
     val c = point(1L)
     val d = hole(1L)
-    assertEquals(atOrAbove(1L), a | b)
-    assertEquals(above(1L), a & b)
-    assertEquals(point(1L), a ^ b)
-    assertEquals(atOrAbove(1L), a | c)
-    assertEquals(empty[Long], a & c)
-    assertEquals(atOrAbove(1L), a ^ c)
-    assertEquals(hole(1L), a | d)
-    assertEquals(above(1L), a & d)
-    assertEquals(below(1L), a ^ d)
+    assert(atOrAbove(1L) === (a | b))
+    assert(above(1L) === (a & b))
+    assert(point(1L) === (a ^ b))
+    assert(atOrAbove(1L) === (a | c))
+    assert(empty[Long] === (a & c))
+    assert(atOrAbove(1L) === (a ^ c))
+    assert(hole(1L) === (a | d))
+    assert(above(1L) === (a & d))
+    assert(below(1L) === (a ^ d))
   }
 
-  /*
-  @Test
-  def parseTest(): Unit = {
-    val atext = "[46]"
-//    val atext = "(-∞, 34);(61, 69];(69, ∞)"
-    val b = IntervalSet(atext)
-    val btext = b.toString
-    println(s"$atext $btext")
-  }
-  */
-
-  @Test(expected = classOf[NumberFormatException])
-  def parseLargeIntegerTest(): Unit = {
-    val text = "[1000000000000000000000000]"
-    IntervalTrie(text)
+  test("parseLargeInteger") {
+    intercept[NumberFormatException] {
+      val text = "[1000000000000000000000000]"
+      IntervalTrie(text)
+    }
   }
 
-  @Test
-  def predefinedTypesTest(): Unit = {
-    def testEdge[T:Element](value:T) : Unit = {
-      implicit val order : Order[T] = implicitly[Element[T]].ops
-      assertEquals(IndexedSeq(value), IntervalTrie.above(value).edges.toIndexedSeq)
-      assertEquals(Interval.above(value).toString, IntervalTrie.above(value).toString)
+  test("predefinedTypes") {
+
+    def testEdge[T: Element](value: T): Unit = {
+      implicit val order: Order[T] = implicitly[Element[T]].ops
+      assert(IndexedSeq(value) === IntervalTrie.above(value).edges.toIndexedSeq)
+      assert(Interval.above(value).toString === IntervalTrie.above(value).toString)
     }
 
-    def testInterval[T:Element](min:T, max:T) : Unit = {
+    def testInterval[T: Element](min: T, max: T): Unit = {
       implicit val ops = implicitly[Element[T]].ops
       val interval = Interval.fromBounds(Closed(min), Closed(max))
       val intervalSet = IntervalTrie(interval)
-      assertEquals(IndexedSeq(min,max), intervalSet.edges.toIndexedSeq)
-      assertEquals(interval.toString, intervalSet.toString)
+      assert(IndexedSeq(min, max) === intervalSet.edges.toIndexedSeq)
+      assert(interval.toString === intervalSet.toString)
     }
 
     //Byte
@@ -123,57 +100,57 @@ class IntervalTrieTest {
     testInterval(Char.MinValue, Char.MaxValue)
   }
 
-  @Test(expected = classOf[IllegalArgumentException])
-  def doubleRejectsNaNTest(): Unit = {
-    IntervalTrie.above(Double.NaN)
+  test("doubleRejectsNaN") {
+    intercept[IllegalArgumentException] {
+      IntervalTrie.above(Double.NaN)
+    }
   }
 
-  @Test(expected = classOf[IllegalArgumentException])
-  def floatRejectsNaNTest(): Unit = {
-    IntervalTrie.above(Float.NaN)
+  test("floatRejectsNaN") {
+    intercept[IllegalArgumentException] {
+      IntervalTrie.above(Float.NaN)
+    }
   }
 
-  @Test
-  def atIsSameAsApplyTest(): Unit = {
+  test("atIsSameAsApply") {
     val is = IntervalTrie.above(1)
-    is.at(1) == is.apply(1)
+    assert(is.at(1) === is.apply(1))
   }
 
-  @Test
-  def subsetOfTest(): Unit = {
-    assertTrue(IntervalTrie.above(1).isSupersetOf(IntervalTrie.above(1)))
-    assertTrue(IntervalTrie.atOrAbove(1).isSupersetOf(IntervalTrie.above(1)))
-    assertFalse(IntervalTrie.above(1).isSupersetOf(IntervalTrie.atOrAbove(1)))
+  test("subsetOf") {
+    assert(IntervalTrie.above(1).isSupersetOf(IntervalTrie.above(1)))
+    assert(IntervalTrie.atOrAbove(1).isSupersetOf(IntervalTrie.above(1)))
+    assert(!IntervalTrie.above(1).isSupersetOf(IntervalTrie.atOrAbove(1)))
 
-    assertFalse(IntervalTrie.above(1).isProperSupersetOf(IntervalTrie.above(1)))
-    assertTrue(IntervalTrie.atOrAbove(1).isProperSupersetOf(IntervalTrie.above(1)))
-    assertFalse(IntervalTrie.above(1).isProperSupersetOf(IntervalTrie.atOrAbove(1)))
+    assert(!IntervalTrie.above(1).isProperSupersetOf(IntervalTrie.above(1)))
+    assert(IntervalTrie.atOrAbove(1).isProperSupersetOf(IntervalTrie.above(1)))
+    assert(!IntervalTrie.above(1).isProperSupersetOf(IntervalTrie.atOrAbove(1)))
   }
 
-  @Test(expected = classOf[IllegalArgumentException])
-  def concatExceptionTest(): Unit = {
-    Tree.concat(Tree.Leaf(0,false, false), Tree.Leaf(0,false, false))
+  test("concatException") {
+    intercept[IllegalArgumentException] {
+      Tree.concat(Tree.Leaf(0, false, false), Tree.Leaf(0, false, false))
+    }
   }
 
-  @Test
-  def algebraTest(): Unit = {
+  test("algebra") {
     val algebra = IntervalTrieAlgebra.booleanAlgebra[Long]
     val a = IntervalTrie.above(1L)
     val b = IntervalTrie.below(1L)
-    assertEquals(a ^ b, algebra.xor(a, b))
+    assert((a ^ b) === algebra.xor(a, b))
   }
 
-  @Test
-  def charAdditiveMonoidTest(): Unit = {
+  test("charAdditiveMonoid") {
     import IntervalTrie.CharElement.ops._
-    assertEquals(0, zero.toInt)
-    assertEquals('a', plus('a', zero))
+    assert(0 === zero.toInt)
+    assert('a' === plus('a', zero))
   }
 
-  @Test(expected = classOf[NoSuchElementException])
-  def iteratorAfterEndTest(): Unit = {
-    val all = IntervalTrie.empty[Int]
-    val it = all.intervalIterator
-    it.next()
+  test("iteratorAfterEnd") {
+    intercept[NoSuchElementException] {
+      val all = IntervalTrie.empty[Int]
+      val it = all.intervalIterator
+      it.next()
+    }
   }
 }

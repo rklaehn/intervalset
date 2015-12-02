@@ -1,10 +1,10 @@
 package com.rklaehn.interval
 
-import spire.algebra.{Order, Bool, Eq}
+import spire.algebra.{ Order, Bool, Eq }
 
 object IntervalSeqAlgebra {
 
-  implicit def booleanAlgebra[T:Order] = new Bool[IntervalSeq[T]] with Eq[IntervalSeq[T]] {
+  implicit def booleanAlgebra[T: Order] = new Bool[IntervalSeq[T]] with Eq[IntervalSeq[T]] {
 
     def eqv(x: IntervalSeq[T], y: IntervalSeq[T]) = x == y
 
