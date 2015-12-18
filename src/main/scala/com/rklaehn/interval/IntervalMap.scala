@@ -36,9 +36,17 @@ sealed abstract class IntervalMap[K, V] { lhs ⇒
   def values(implicit v: Value[V]): V
 }
 
-object IntervalMap {
+private[interval] trait IntervalMap0 {
 
-  implicit def eqv[K: Order, V: Value]: Eq[IntervalMap[K, V]] = new Eq[IntervalMap[K, V]] {
+  implicit def monoid[K: Order, V: Monoid: Eq]: Monoid[IntervalMap[K, V]] = new Monoid[IntervalMap[K, V]] {
+    def id = IntervalMap.constant(Monoid[V].id)
+    def op(x: IntervalMap[K, V], y: IntervalMap[K, V]) = IntervalMap.combine(x, y)
+  }
+}
+
+object IntervalMap extends IntervalMap0 {
+
+  implicit def eqv[K: Order, V: Eq]: Eq[IntervalMap[K, V]] = new Eq[IntervalMap[K, V]] {
 
     def eqv(x: IntervalMap[K, V], y: IntervalMap[K, V]) = x == y
   }
@@ -58,16 +66,12 @@ object IntervalMap {
     override def xor(a: IntervalMap[K, V], b: IntervalMap[K, V]) = a ^ b
   }
 
-  implicit def monoid[K: Order, V: Monoid: Eq]: Monoid[IntervalMap[K, V]] = new Monoid[IntervalMap[K, V]] {
-    def id = IntervalMap.constant(Monoid[V].id)
-    def op(x: IntervalMap[K, V], y: IntervalMap[K, V]) = new MonoidCombine[K, V](x, y).result
-  }
 
-  implicit def group[K: Order, V: Group: Eq]: Monoid[IntervalMap[K, V]] = new Group[IntervalMap[K, V]] {
+  implicit def group[K: Order, V: Group: Eq]: Group[IntervalMap[K, V]] = new Group[IntervalMap[K, V]] {
     def id = IntervalMap.constant(Monoid[V].id)
-    def op(x: IntervalMap[K, V], y: IntervalMap[K, V]) = new MonoidCombine[K, V](x, y).result
+    def op(x: IntervalMap[K, V], y: IntervalMap[K, V]) = IntervalMap.combine(x, y)
     def inverse(a: IntervalMap[K, V]) = a.mapValues(Group[V].inverse)
-    override def opInverse(a: IntervalMap[K, V], b: IntervalMap[K, V]) = new GroupRemove[K, V](a, b).result
+    override def opInverse(a: IntervalMap[K, V], b: IntervalMap[K, V]) = IntervalMap.remove(a, b)
   }
 
   trait Value[V] extends Eq[V] {
@@ -553,6 +557,9 @@ object IntervalMap {
     }
   }
 
+  private[interval] def combine[K: Order, V: Monoid: Eq](a: IntervalMap[K, V], b: IntervalMap[K, V]): IntervalMap[K, V] =
+    new MonoidCombine[K, V](a, b).result
+
   private final class MonoidCombine[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vMonoid: Monoid[V], vEq: Eq[V]) extends BinaryOp[K, V] {
     def op(a: V, b: V) = vMonoid.op(a, b)
 
@@ -574,6 +581,9 @@ object IntervalMap {
         super.fromB(a, b0, b1)
     }
   }
+
+  private[interval] def remove[K: Order, V: Group: Eq](a: IntervalMap[K, V], b: IntervalMap[K, V]): IntervalMap[K, V] =
+    new GroupRemove[K, V](a, b).result
 
   private final class GroupRemove[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vGroup: Group[V], vEq: Eq[V]) extends BinaryOp[K, V] {
     def op(a: V, b: V) = vGroup.opInverse(a, b)

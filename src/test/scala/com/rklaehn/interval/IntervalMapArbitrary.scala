@@ -18,9 +18,11 @@ object IntervalMapArbitrary {
     } yield
       levels.reduceOption(_ ^ _).getOrElse(IntervalMap.zero[Int, V])
 
-  val intSetArbitrary = Arbitrary(combinedGen[Set[Int]])
+  implicit val intSetArbitrary = Arbitrary(combinedGen[Set[Int]])
 
-  val intSortedSetArbitrary = Arbitrary(combinedGen[SortedSet[Int]])
+  implicit val intSortedSetArbitrary = Arbitrary(combinedGen[SortedSet[Int]])
 
-  val boolArbitrary = Arbitrary(combinedGen[Boolean])
+  implicit val boolArbitrary = Arbitrary(combinedGen[Boolean])
+
+  implicit val intArbitrary = Arbitrary(combinedGen[SortedSet[Int]].map(_.mapValues(_.sum)))
 }
