@@ -3,7 +3,7 @@ package com.rklaehn.interval
 import com.rklaehn.sonicreducer.Reducer
 
 import language.implicitConversions
-import spire.algebra.{ Eq, Bool, Order }
+import spire.algebra._
 import spire.math.Interval
 import spire.math.interval._
 import spire.algebra.Order.ordering
@@ -29,12 +29,46 @@ sealed abstract class IntervalMap[K, V] { lhs ⇒
   def |(rhs: IntervalMap[K, V])(implicit o: Order[K], v: Value[V]): IntervalMap[K, V] =
     new Or[K, V](lhs, rhs).result
 
+  def mapValues[V2: Eq](f: V => V2): IntervalMap[K, V2]
+
   def entries(implicit o: Order[K], v: Value[V]): Traversable[(Interval[K], V)]
 
   def values(implicit v: Value[V]): V
 }
 
 object IntervalMap {
+
+  implicit def eqv[K: Order, V: Value]: Eq[IntervalMap[K, V]] = new Eq[IntervalMap[K, V]] {
+
+    def eqv(x: IntervalMap[K, V], y: IntervalMap[K, V]) = x == y
+  }
+
+  implicit def bool[K: Order, V: Value: Bool] = new Bool[IntervalMap[K, V]] {
+
+    def zero = IntervalMap.zero[K, V]
+
+    def one = IntervalMap.one[K, V]
+
+    def complement(a: IntervalMap[K, V]) = ~a
+
+    def or(a: IntervalMap[K, V], b: IntervalMap[K, V]) = a | b
+
+    def and(a: IntervalMap[K, V], b: IntervalMap[K, V]) = a & b
+
+    override def xor(a: IntervalMap[K, V], b: IntervalMap[K, V]) = a ^ b
+  }
+
+  implicit def monoid[K: Order, V: Monoid: Eq]: Monoid[IntervalMap[K, V]] = new Monoid[IntervalMap[K, V]] {
+    def id = IntervalMap.constant(Monoid[V].id)
+    def op(x: IntervalMap[K, V], y: IntervalMap[K, V]) = new MonoidCombine[K, V](x, y).result
+  }
+
+  implicit def group[K: Order, V: Group: Eq]: Monoid[IntervalMap[K, V]] = new Group[IntervalMap[K, V]] {
+    def id = IntervalMap.constant(Monoid[V].id)
+    def op(x: IntervalMap[K, V], y: IntervalMap[K, V]) = new MonoidCombine[K, V](x, y).result
+    def inverse(a: IntervalMap[K, V]) = a.mapValues(Group[V].inverse)
+    override def opInverse(a: IntervalMap[K, V], b: IntervalMap[K, V]) = new GroupRemove[K, V](a, b).result
+  }
 
   trait Value[V] extends Eq[V] {
 
@@ -52,6 +86,8 @@ object IntervalMap {
   }
 
   object Value {
+
+    implicit def apply[V: Value]: Value[V] = implicitly[Value[V]]
 
     implicit object booleanIsValue extends Value[Boolean] {
 
@@ -135,7 +171,7 @@ object IntervalMap {
     lhs ⇒
 
     // $COVERAGE-OFF$
-    private def isCanonical(implicit v: Value[V]): Boolean = {
+    private def isCanonical(implicit v: Eq[V]): Boolean = {
       var current = belowAll
       for(edge ← edges) {
         if(v.eqv(current, edge.at) && v.eqv(edge.at, edge.above))
@@ -171,7 +207,7 @@ object IntervalMap {
     private def foreachInterval[U](f: ((Interval[K], V)) => U)(implicit o: Order[K], v: Value[V]): Unit = {
       var prevBound: Bound[K] = Unbound[K]()
       var prevValue: V = belowAll
-      for (c <- edges) {
+      for(c <- edges) {
         val below = prevValue
         val at = c.at
         val above = c.above
@@ -196,6 +232,22 @@ object IntervalMap {
         prevValue = above
       }
       f((Interval.fromBounds(prevBound, Unbound()), prevValue))
+    }
+
+    def mapValues[V2: Eq](f: V => V2) = {
+      val edgeBuilder = Array.newBuilder[Edge[K, V2]]
+      edgeBuilder.sizeHint(edges.length)
+      val Eq = implicitly[Eq[V2]]
+      val belowAll1 = f(belowAll)
+      var prev1 = belowAll1
+      for(Edge(x, at, above) <- edges) {
+        val at1 = f(at)
+        val above1 = f(above)
+        if(Eq.neqv(prev1, at1) || Eq.neqv(at1, above1))
+          edgeBuilder += Edge(x, at1, above1)
+        prev1 = above1
+      }
+      new Impl(belowAll1, edgeBuilder.result())
     }
   }
 
@@ -274,21 +326,9 @@ object IntervalMap {
 
   private abstract class MergeOperation[K, V] {
 
-    def same(a: V, b: V): Boolean = vValue.eqv(a, b)
-
-    def isZero(x: V): Boolean = vValue.isZero(x)
-
-    def isOne(x: V): Boolean = vValue.isOne(x)
-
-    def and(a: V, b: V): V = vValue.and(a, b)
-
-    def or(a: V, b: V): V = vValue.or(a, b)
-
-    def xor(a: V, b: V): V = vValue.xor(a, b)
+    def vEqv(a: V, b: V): Boolean
 
     def kOrder: Order[K]
-
-    def vValue: Value[V]
 
     def lhs: Impl[K, V]
 
@@ -368,9 +408,9 @@ object IntervalMap {
     def result: IntervalMap[K, V] = {
       merge0(0, as.length, 0, bs.length)
       val result = IntervalMap(r0, rs.take(ri))
-//      val canonical = result.isCanonical(vValue)
-//      if(!canonical)
-//        require(result.isCanonical(vValue))
+      //      val canonical = result.isCanonical(vValue)
+      //      if(!canonical)
+      //        require(result.isCanonical(vValue))
       result
     }
   }
@@ -385,7 +425,7 @@ object IntervalMap {
     def op(a: V, b: V): V
 
     def edge(x: K, below: V, at: V, above: V): Unit = {
-      if (!same(below, at) || !same(at, above)) {
+      if (!vEqv(below, at) || !vEqv(at, above)) {
         add(Edge(x, at, above))
       }
     }
@@ -432,7 +472,23 @@ object IntervalMap {
 
   }
 
-  private final class And[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends BinaryOp[K, V] {
+  private abstract class BooleanMergeOperation[K, V] extends BinaryOp[K, V] {
+    def isZero(x: V): Boolean = vValue.isZero(x)
+
+    def isOne(x: V): Boolean = vValue.isOne(x)
+
+    def and(a: V, b: V): V = vValue.and(a, b)
+
+    def or(a: V, b: V): V = vValue.or(a, b)
+
+    def xor(a: V, b: V): V = vValue.xor(a, b)
+
+    def vEqv(a: V, b: V) = vValue.eqv(a, b)
+
+    def vValue: Value[V]
+  }
+
+  private final class And[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends BooleanMergeOperation[K, V] {
     def op(a: V, b: V) =
       and(a, b)
 
@@ -455,7 +511,7 @@ object IntervalMap {
     }
   }
 
-  private final class Or[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends BinaryOp[K, V] {
+  private final class Or[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends BooleanMergeOperation[K, V] {
     def op(a: V, b: V) =
       or(a, b)
 
@@ -478,7 +534,7 @@ object IntervalMap {
     }
   }
 
-  private final class Xor[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends BinaryOp[K, V] {
+  private final class Xor[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends BooleanMergeOperation[K, V] {
     def op(a: V, b: V) =
       xor(a, b)
 
@@ -494,6 +550,43 @@ object IntervalMap {
         super.copyB(b0, b1)
       else
         super.fromB(a, b0, b1)
+    }
+  }
+
+  private final class MonoidCombine[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vMonoid: Monoid[V], vEq: Eq[V]) extends BinaryOp[K, V] {
+    def op(a: V, b: V) = vMonoid.op(a, b)
+
+    def vEqv(a: V, b: V) = vEq.eqv(a, b)
+
+    def isId(a: V) = vEq.eqv(a, vMonoid.id)
+
+    override def fromA(a0: Int, a1: Int, b: Int) = {
+      if (isId(bCurr))
+        super.copyA(a0, a1)
+      else
+        super.fromA(a0, a1, b)
+    }
+
+    override def fromB(a: Int, b0: Int, b1: Int) = {
+      if (isId(aCurr))
+        super.copyB(b0, b1)
+      else
+        super.fromB(a, b0, b1)
+    }
+  }
+
+  private final class GroupRemove[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vGroup: Group[V], vEq: Eq[V]) extends BinaryOp[K, V] {
+    def op(a: V, b: V) = vGroup.opInverse(a, b)
+
+    def vEqv(a: V, b: V) = vEq.eqv(a, b)
+
+    def isId(a: V) = vEq.eqv(a, vGroup.id)
+
+    override def fromA(a0: Int, a1: Int, b: Int) = {
+      if (isId(bCurr))
+        super.copyA(a0, a1)
+      else
+        super.fromA(a0, a1, b)
     }
   }
 }
