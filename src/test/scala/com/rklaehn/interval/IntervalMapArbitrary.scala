@@ -1,28 +1,45 @@
 package com.rklaehn.interval
 
 import org.scalacheck.{ Gen, Arbitrary }
+import Arbitrary.arbitrary
+import spire.algebra.{AdditiveGroup, Eq, Monoid}
 import spire.implicits._
 
 import scala.collection.immutable.SortedSet
 
 object IntervalMapArbitrary {
 
-  private def simpleGen[V: Arbitrary: IntervalMap.Value]: Gen[IntervalMap[Int, V]] = for {
-    value <- implicitly[Arbitrary[V]].arbitrary
-    is <- IntervalSeqArbitrary.arbitrary.arbitrary
-  } yield is.intervals.map(i => IntervalMap(i, value)).reduceOption(_ ^ _).getOrElse(IntervalMap.zero[Int, V])
+  private def genFromBool[V: Arbitrary: IntervalMap.Value]: Gen[IntervalMap[Int, V]] = {
+    import IntervalMap.CreateFromBool._
 
-  private def combinedGen[V: Arbitrary: IntervalMap.Value]: Gen[IntervalMap[Int, V]] =
+    def simpleGen: Gen[IntervalMap[Int, V]] = for {
+      value <- arbitrary[V]
+      is <- IntervalSeqArbitrary.arbitrary.arbitrary
+    } yield is.intervals.map(i => IntervalMap(i, value)).reduceOption(_ ^ _).getOrElse(IntervalMap.zero[Int, V])
+
     for {
-      levels <- Gen.containerOf[Array, IntervalMap[Int, V]](simpleGen[V])
+      levels <- Gen.containerOf[Array, IntervalMap[Int, V]](simpleGen)
     } yield
       levels.reduceOption(_ ^ _).getOrElse(IntervalMap.zero[Int, V])
+  }
 
-  implicit val intSetArbitrary = Arbitrary(combinedGen[Set[Int]])
+  private def genFromMonoid[V: Arbitrary: Monoid: Eq]: Gen[IntervalMap[Int, V]] = {
+    import IntervalMap.CreateFromMonoid._
 
-  implicit val intSortedSetArbitrary = Arbitrary(combinedGen[SortedSet[Int]])
+    val m = IntervalMap.monoid[Int, V]
 
-  implicit val boolArbitrary = Arbitrary(combinedGen[Boolean])
+    for {
+      value <- arbitrary[V]
+      is <- IntervalSeqArbitrary.arbitrary.arbitrary
+    } yield is.intervals.map(i => IntervalMap(i, value)).reduceOption(m.op).getOrElse(m.id)
+  }
 
-  implicit val intArbitrary = Arbitrary(combinedGen[SortedSet[Int]].map(_.mapValues(_.sum)))
+  implicit val intSetArbitrary = Arbitrary(genFromBool[Set[Int]])
+
+  implicit val intSortedSetArbitrary = Arbitrary(genFromBool[SortedSet[Int]])
+
+  implicit val boolArbitrary = Arbitrary(genFromBool[Boolean])
+
+  implicit def g[T](implicit g:AdditiveGroup[T]) = g.additive
+  implicit val intArbitrary = Arbitrary(genFromMonoid[Int])
 }

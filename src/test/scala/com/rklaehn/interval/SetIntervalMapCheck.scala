@@ -11,13 +11,13 @@ object SetIntervalMapCheck extends Properties("SetIntervalsSetConsistentWithInte
   implicit val arb = IntervalSeqArbitrary.arbitrary
 
   private def toIntervalMap(x: IntervalSeq[Int], value: Int): IntervalMap[Int, SortedSet[Int]] =
-    IntervalMap(x.intervals.toSeq.map(_ → SortedSet(value)): _*)
+    IntervalMap.FromBool(x.intervals.toSeq.map(_ → SortedSet(value)): _*)
 
   private def toIntervalSeq(x: IntervalMap[Int, SortedSet[Int]], value: Int): IntervalSeq[Int] =
     x.entries.filter(_._2.contains(value)).foldLeft(IntervalSeq.empty[Int]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
 
   def toIntervalsSet(m: Map[Int, IntervalSeq[Int]]): IntervalMap[Int, SortedSet[Int]] = {
-    val empty = IntervalMap.zero[Int, SortedSet[Int]]
+    val empty = IntervalMap.FromBool.zero[Int, SortedSet[Int]]
     m.foldLeft(empty) {
       case (a, (v, i)) ⇒
         a ^ toIntervalMap(i, v)

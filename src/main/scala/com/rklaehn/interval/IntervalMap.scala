@@ -53,9 +53,9 @@ object IntervalMap extends IntervalMap0 {
 
   implicit def bool[K: Order, V: Value: Bool] = new Bool[IntervalMap[K, V]] {
 
-    def zero = IntervalMap.zero[K, V]
+    def zero = IntervalMap.constant(Value[V].zero)
 
-    def one = IntervalMap.one[K, V]
+    def one = IntervalMap.constant(Bool[V].one)
 
     def complement(a: IntervalMap[K, V]) = ~a
 
@@ -65,7 +65,6 @@ object IntervalMap extends IntervalMap0 {
 
     override def xor(a: IntervalMap[K, V], b: IntervalMap[K, V]) = a ^ b
   }
-
 
   implicit def group[K: Order, V: Group: Eq]: Group[IntervalMap[K, V]] = new Group[IntervalMap[K, V]] {
     def id = IntervalMap.constant(Monoid[V].id)
@@ -255,64 +254,144 @@ object IntervalMap extends IntervalMap0 {
     }
   }
 
-  def one[K, V](implicit vb: Bool[V]): IntervalMap[K, V] =
-    IntervalMap(vb.one, Array.empty[Edge[K, V]])
-
   def constant[K, V](value: V): IntervalMap[K, V] =
     IntervalMap(value, Array.empty[Edge[K, V]])
 
-  def zero[K, V](implicit vv: Value[V]): IntervalMap[K, V] =
-    IntervalMap(vv.zero, Array.empty[Edge[K, V]])
-
-  def point[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
-    if(vv.isZero(value)) zero
-    else IntervalMap(vv.zero, Array(Edge(x, value, vv.zero)))
-
-  def hole[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
-    if(vv.isZero(value)) zero
-    else IntervalMap(value, Array(Edge(x, vv.zero, value)))
-
-  def atOrAbove[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
-    if(vv.isZero(value)) zero
-    else IntervalMap(vv.zero, Array(Edge(x, value, value)))
-
-  def above[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
-    if(vv.isZero(value)) zero
-    else IntervalMap(vv.zero, Array(Edge(x, vv.zero, value)))
-
-  def atOrBelow[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
-    if(vv.isZero(value)) zero
-    else IntervalMap(value, Array(Edge(x, value, vv.zero)))
-
-  def below[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
-    if(vv.isZero(value)) zero
-    else IntervalMap(value, Array(Edge(x, vv.zero, vv.zero)))
-
-  def apply[K, V](iv: (Interval[K], V)*)(implicit ko: Order[K], vv: Value[V]): IntervalMap[K, V] = {
-    val singles = iv.map { case (i, v) ⇒ IntervalMap(i, v) }
-    Reducer.reduce(singles)(_ | _).getOrElse(zero)
+  object CreateFromBool {
+    implicit def fromBoolOps(x: IntervalMap.type): FromBool.type = FromBool
   }
 
-  def apply[K, V](interval: Interval[K], value: V)(implicit vv: Value[V]): IntervalMap[K, V] = if(vv.isZero(value)) zero else {
-    interval.fold {
-      case (Closed(a), Closed(b)) if a == b => point(a, value)
-      case (Unbound(), Open(x)) => below(x, value)
-      case (Unbound(), Closed(x)) => atOrBelow(x, value)
-      case (Open(x), Unbound()) => above(x, value)
-      case (Closed(x), Unbound()) => atOrAbove(x, value)
-      case (Closed(a), Closed(b)) => fromTo(Edge(a, value, value), Edge(b, value, vv.zero))
-      case (Closed(a), Open(b)) => fromTo(Edge(a, value, value), Edge(b, vv.zero, vv.zero))
-      case (Open(a), Closed(b)) => fromTo(Edge(a, vv.zero, value), Edge(b, value, vv.zero))
-      case (Open(a), Open(b)) => fromTo(Edge(a, vv.zero, value), Edge(b, vv.zero, vv.zero))
-      case (Unbound(), Unbound()) => constant[K, V](value)
-      case (EmptyBound(), EmptyBound()) => zero[K, V]
+  object CreateFromMonoid {
+    implicit def fromBoolOps(x: IntervalMap.type): FromMonoid.type = FromMonoid
+  }
+
+  object FromMonoid {
+
+    def empty[K, V](implicit vb: Monoid[V]): IntervalMap[K, V] =
+      IntervalMap(vb.id, Array.empty[Edge[K, V]])
+
+    def point[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
+      if (vv.isId(value)) empty
+      else IntervalMap(vv.id, Array(Edge(x, value, vv.id)))
+
+    def hole[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
+      if (vv.isId(value)) empty
+      else IntervalMap(value, Array(Edge(x, vv.id, value)))
+
+    def atOrAbove[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
+      if (vv.isId(value)) empty
+      else IntervalMap(vv.id, Array(Edge(x, value, value)))
+
+    def above[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
+      if (vv.isId(value)) empty
+      else IntervalMap(vv.id, Array(Edge(x, vv.id, value)))
+
+    def atOrBelow[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
+      if (vv.isId(value)) empty
+      else IntervalMap(value, Array(Edge(x, value, vv.id)))
+
+    def below[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
+      if (vv.isId(value)) empty
+      else IntervalMap(value, Array(Edge(x, vv.id, vv.id)))
+
+    def apply[K: Order, V: Monoid: Eq](iv: (Interval[K], V)*): IntervalMap[K, V] = {
+      val singles = iv.map { case (i, v) ⇒ apply(i, v) }
+      val m = monoid[K, V]
+      Reducer.reduce(singles)(m.op).getOrElse(empty)
     }
+
+    def apply[K, V](interval: Interval[K], value: V)(implicit vv: Monoid[V], ve: Eq[V]): IntervalMap[K, V] = if (vv.isId(value)) empty
+    else {
+      interval.fold {
+        case (Closed(a), Closed(b)) if a == b => point(a, value)
+        case (Unbound(), Open(x)) => below(x, value)
+        case (Unbound(), Closed(x)) => atOrBelow(x, value)
+        case (Open(x), Unbound()) => above(x, value)
+        case (Closed(x), Unbound()) => atOrAbove(x, value)
+        case (Closed(a), Closed(b)) => step2(vv.id, a, value, value, b, value, vv.id)
+        case (Closed(a), Open(b)) => step2(vv.id, a, value, value, b, vv.id, vv.id)
+        case (Open(a), Closed(b)) => step2(vv.id, a, vv.id, value, b, value, vv.id)
+        case (Open(a), Open(b)) => step2(vv.id, a, vv.id, value, b, vv.id, vv.id)
+        case (Unbound(), Unbound()) => constant[K, V](value)
+        case (EmptyBound(), EmptyBound()) => empty[K, V]
+      }
+    }
+  }
+
+  object FromBool {
+
+    def one[K, V](implicit vb: Bool[V]): IntervalMap[K, V] =
+      IntervalMap(vb.one, Array.empty[Edge[K, V]])
+
+    def zero[K, V](implicit vv: Value[V]): IntervalMap[K, V] =
+      IntervalMap(vv.zero, Array.empty[Edge[K, V]])
+
+    def point[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
+      if (vv.isZero(value)) zero
+      else IntervalMap(vv.zero, Array(Edge(x, value, vv.zero)))
+
+    def hole[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
+      if (vv.isZero(value)) zero
+      else IntervalMap(value, Array(Edge(x, vv.zero, value)))
+
+    def atOrAbove[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
+      if (vv.isZero(value)) zero
+      else IntervalMap(vv.zero, Array(Edge(x, value, value)))
+
+    def above[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
+      if (vv.isZero(value)) zero
+      else IntervalMap(vv.zero, Array(Edge(x, vv.zero, value)))
+
+    def atOrBelow[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
+      if (vv.isZero(value)) zero
+      else IntervalMap(value, Array(Edge(x, value, vv.zero)))
+
+    def below[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
+      if (vv.isZero(value)) zero
+      else IntervalMap(value, Array(Edge(x, vv.zero, vv.zero)))
+
+    def apply[K: Order, V: Value](iv: (Interval[K], V)*): IntervalMap[K, V] = {
+      val singles = iv.map { case (i, v) ⇒ apply(i, v) }
+      Reducer.reduce(singles)(_ | _).getOrElse(zero)
+    }
+
+    def apply[K, V](interval: Interval[K], value: V)(implicit vv: Value[V]): IntervalMap[K, V] = if (vv.isZero(value)) zero
+    else {
+      interval.fold {
+        case (Closed(a), Closed(b)) if a == b => point(a, value)
+        case (Unbound(), Open(x)) => below(x, value)
+        case (Unbound(), Closed(x)) => atOrBelow(x, value)
+        case (Open(x), Unbound()) => above(x, value)
+        case (Closed(x), Unbound()) => atOrAbove(x, value)
+        case (Closed(a), Closed(b)) => fromTo(Edge(a, value, value), Edge(b, value, vv.zero))
+        case (Closed(a), Open(b)) => fromTo(Edge(a, value, value), Edge(b, vv.zero, vv.zero))
+        case (Open(a), Closed(b)) => fromTo(Edge(a, vv.zero, value), Edge(b, value, vv.zero))
+        case (Open(a), Open(b)) => fromTo(Edge(a, vv.zero, value), Edge(b, vv.zero, vv.zero))
+        case (Unbound(), Unbound()) => constant[K, V](value)
+        case (EmptyBound(), EmptyBound()) => zero[K, V]
+      }
+    }
+  }
+
+  private def step1[K, V](belowA: V, a: K, atA: V, aboveA: V)(implicit Eq: Eq[V]): IntervalMap[K, V] =
+    if(Eq.eqv(belowA, atA) && Eq.eqv(atA, aboveA))
+      constant[K, V](belowA)
+    else
+      IntervalMap[K, V](belowA, Array(Edge(a, atA, aboveA)))
+
+  private def step2[K, V](belowA: V, a: K, atA: V, aboveA: V, b: K, atB: V, aboveB: V)(implicit Eq: Eq[V]): IntervalMap[K, V] = {
+    if(Eq.eqv(belowA, atA) && Eq.eqv(atA, aboveA))
+      step1(aboveA, b, atB, aboveB)
+    else if(Eq.eqv(aboveA, atB) && Eq.eqv(atB, aboveB))
+      step1(belowA, a, atA, aboveA)
+    else
+      IntervalMap(belowA, Array(Edge(a, atA, aboveA), Edge(b, atB, aboveB)))
   }
 
   private def negate[K, V](x: Impl[K, V])(implicit b: Bool[V]): IntervalMap[K, V] = {
     val belowAll1 = ~x.belowAll
     val edges1 = x.edges.map(e ⇒ Edge(e.x, ~e.at, ~e.above))
-    new Impl(belowAll1, edges1)
+    IntervalMap(belowAll1, edges1)
   }
 
   private def fromTo[K, V](a: Edge[K, V], b: Edge[K, V])(implicit vv: Value[V]): IntervalMap[K, V] =
