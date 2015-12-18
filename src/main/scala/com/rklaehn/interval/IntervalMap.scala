@@ -52,17 +52,11 @@ object IntervalMap extends IntervalMap0 {
   }
 
   implicit def bool[K: Order, V: Value: Bool] = new Bool[IntervalMap[K, V]] {
-
     def zero = IntervalMap.constant(Value[V].zero)
-
     def one = IntervalMap.constant(Bool[V].one)
-
     def complement(a: IntervalMap[K, V]) = ~a
-
     def or(a: IntervalMap[K, V], b: IntervalMap[K, V]) = a | b
-
     def and(a: IntervalMap[K, V], b: IntervalMap[K, V]) = a & b
-
     override def xor(a: IntervalMap[K, V], b: IntervalMap[K, V]) = a ^ b
   }
 
@@ -268,7 +262,7 @@ object IntervalMap extends IntervalMap0 {
   object FromMonoid {
 
     def empty[K, V](implicit vb: Monoid[V]): IntervalMap[K, V] =
-      IntervalMap(vb.id, Array.empty[Edge[K, V]])
+      IntervalMap.constant(vb.id)
 
     def point[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
       if (vv.isId(value)) empty
@@ -321,7 +315,7 @@ object IntervalMap extends IntervalMap0 {
   object FromBool {
 
     def one[K, V](implicit vb: Bool[V]): IntervalMap[K, V] =
-      IntervalMap(vb.one, Array.empty[Edge[K, V]])
+      IntervalMap.constant(vb.one)
 
     def zero[K, V](implicit vv: Value[V]): IntervalMap[K, V] =
       IntervalMap(vv.zero, Array.empty[Edge[K, V]])
@@ -363,10 +357,10 @@ object IntervalMap extends IntervalMap0 {
         case (Unbound(), Closed(x)) => atOrBelow(x, value)
         case (Open(x), Unbound()) => above(x, value)
         case (Closed(x), Unbound()) => atOrAbove(x, value)
-        case (Closed(a), Closed(b)) => fromTo(Edge(a, value, value), Edge(b, value, vv.zero))
-        case (Closed(a), Open(b)) => fromTo(Edge(a, value, value), Edge(b, vv.zero, vv.zero))
-        case (Open(a), Closed(b)) => fromTo(Edge(a, vv.zero, value), Edge(b, value, vv.zero))
-        case (Open(a), Open(b)) => fromTo(Edge(a, vv.zero, value), Edge(b, vv.zero, vv.zero))
+        case (Closed(a), Closed(b)) => step2(vv.zero, a, value, value, b, value, vv.zero)
+        case (Closed(a), Open(b)) => step2(vv.zero, a, value, value, b, vv.zero, vv.zero)
+        case (Open(a), Closed(b)) => step2(vv.zero, a, vv.zero, value, b, value, vv.zero)
+        case (Open(a), Open(b)) => step2(vv.zero, a, vv.zero, value, b, vv.zero, vv.zero)
         case (Unbound(), Unbound()) => constant[K, V](value)
         case (EmptyBound(), EmptyBound()) => zero[K, V]
       }
@@ -394,15 +388,12 @@ object IntervalMap extends IntervalMap0 {
     IntervalMap(belowAll1, edges1)
   }
 
-  private def fromTo[K, V](a: Edge[K, V], b: Edge[K, V])(implicit vv: Value[V]): IntervalMap[K, V] =
-    IntervalMap(vv.zero, Array(a, b))
-
   private def apply[K, V](belowAll: V, edges: Array[Edge[K, V]]) =
     new Impl[K, V](belowAll, edges)
 
-  case class Edge[K, V](x: K, at: V, above: V)
+  private[interval] case class Edge[K, V](x: K, at: V, above: V)
 
-  object Edge {
+  private[interval] object Edge {
 
     implicit def eqv[K, V]: spire.algebra.Eq[Edge[K, V]] = spire.optional.genericEq.generic[Edge[K, V]]
   }
