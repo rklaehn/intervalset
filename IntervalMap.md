@@ -50,7 +50,7 @@ res3: scala.collection.immutable.Set[String] = Set(work, awake)
 
 And more complex things like getting a subset of all activities
 
-```
+```scala
 scala> val eating = IntervalMap(Interval.all[Int] -> Set("breakfast", "dinner"))
 scala> (schedule & eating).entries.mkString
 res8: String = ((-∞, 8),Set())([8, 9],Set(breakfast))((9, 19),Set())([19, 20],Set(dinner))((20, ∞),Set())
@@ -64,6 +64,7 @@ If you have a Monoid or Group for your value, usage is very similar. Imagine you
 light           |------------|
 washing           |--|
 drying               |--|
+standby   ------------------------
 ```
 This can be encoded as an IntervalMap[Int, Double] like this:
 
