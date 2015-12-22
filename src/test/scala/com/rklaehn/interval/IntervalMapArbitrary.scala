@@ -9,7 +9,7 @@ import scala.collection.immutable.SortedSet
 
 object IntervalMapArbitrary {
 
-  private def genFromBool[V: Arbitrary: IntervalMap.Value]: Gen[IntervalMap[Int, V]] = {
+  private def genFromBool[V: Arbitrary: IntervalMap.Value: Eq]: Gen[IntervalMap[Int, V]] = {
     import IntervalMap.CreateFromBool._
 
     def simpleGen: Gen[IntervalMap[Int, V]] = for {
@@ -33,6 +33,10 @@ object IntervalMapArbitrary {
       is <- IntervalSeqArbitrary.arbitrary.arbitrary
     } yield is.intervals.map(i => IntervalMap(i, value)).reduceOption(m.op).getOrElse(m.id)
   }
+
+  implicit def setEq[T] = spire.optional.genericEq.generic[Set[T]]
+
+  implicit def sortedSet[T] = spire.optional.genericEq.generic[SortedSet[T]]
 
   implicit val intSetArbitrary = Arbitrary(genFromBool[Set[Int]])
 
