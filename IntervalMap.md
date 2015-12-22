@@ -1,6 +1,6 @@
 # IntervalMap
 
-IntervalMap[K, V] is a data structure similar to [IntervalSet][IntervalSet.md], but with a value attached to each interval.
+IntervalMap[K, V] is a data structure similar to [IntervalSet](IntervalSet.md), but with a value attached to each interval.
 
 ## Example
 
