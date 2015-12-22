@@ -49,3 +49,6 @@ the value exactly *at* the boundary, and one for *above* the boundary (as define
 Redundant boundaries are never stored. To determine when a boundary is redundant, an Eq instance for the value type is
 required for most operations. (I can imagine some cases where this is not possible (e.g. functions as values), but in 
 that case you can always use a dummy Eq)
+
+[Bool]: https://github.com/non/algebra/blob/master/lattice/src/main/scala/algebra/lattice/Bool.scala
+[GenBool]: https://github.com/non/algebra/blob/master/lattice/src/main/scala/algebra/lattice/GenBool.scala
