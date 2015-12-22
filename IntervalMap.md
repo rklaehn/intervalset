@@ -79,17 +79,18 @@ implicit def m: Monoid[Double] = implicitly[AdditiveMonoid[Double]].additive // 
 val light    = IntervalMap(Interval(6, 19) -> 40.0) // outside the given interval, the zero element Set.empty will be used
 val washing  = IntervalMap(Interval(8, 10) -> 1000.0)
 val drying   = IntervalMap(Interval(10,14) -> 3000.0)
-val total = light |+| washing |+| drying
+val standby  = IntervalMap(Interval.all[Int] -> 10.0)
+val total = light |+| washing |+| drying |+| standby
 ```
 
 Now you can check for the total power consumption at a point in time
 
 ```scala
 scala> total(7)
-res17: Double = 40.0
+res17: Double = 50.0
 
 scala> total(11)
-res19: Double = 3040.0
+res19: Double = 3050.0
 ```
 
 ### Transformations
