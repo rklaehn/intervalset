@@ -20,8 +20,8 @@ This repository contains two data structures for sets of *non-overlapping* inter
 
 ## IntervalMap
 
-This is the most generic data structure. It requires an Order[K] for the keys, and something like a Bool[V] for the values.
+[IntervalMap](IntervalMap.md) is a generalization of IntervalSeq to more complex values. This is the most generic data structure. It requires an Order[K] for the keys, and something like a Bool[V] or a Monoid[V] for the values.
 
 ## QuickArrayMerge
 
-An utility to merge two sorted arrays with a close to optimal number of comparisons
+An utility to merge two sorted arrays with a close to optimal number of comparisons. This is what operations in IntervalSeq and IntervalMap are based on.
