@@ -17,21 +17,25 @@ sealed abstract class IntervalMap[K, V] { lhs ⇒
 
   def belowAll: V
 
-  def unary_~(implicit b: Bool[V]): IntervalMap[K, V] =
-    negate[K, V](this)
+  def apply(k: K)(implicit K: Order[K]): V
 
-  def ^(rhs: IntervalMap[K, V])(implicit o: Order[K], v: Value[V]): IntervalMap[K, V] =
-    new Xor[K, V](lhs, rhs).result
+  def at(k: K)(implicit K: Order[K]): V
 
-  def &(rhs: IntervalMap[K, V])(implicit o: Order[K], v: Value[V]): IntervalMap[K, V] =
-    new And[K, V](lhs, rhs).result
+  def below(k: K)(implicit K: Order[K]): V
 
-  def |(rhs: IntervalMap[K, V])(implicit o: Order[K], v: Value[V]): IntervalMap[K, V] =
-    new Or[K, V](lhs, rhs).result
+  def above(k: K)(implicit K: Order[K]): V
+
+  def unary_~(implicit b: Bool[V]): IntervalMap[K, V] = IntervalMap.negate[K, V](this)
+
+  def ^(rhs: IntervalMap[K, V])(implicit K: Order[K], V: Value[V]): IntervalMap[K, V] = IntervalMap.xor(lhs, rhs)
+
+  def &(rhs: IntervalMap[K, V])(implicit K: Order[K], V: Value[V]): IntervalMap[K, V] = IntervalMap.and(lhs, rhs)
+
+  def |(rhs: IntervalMap[K, V])(implicit K: Order[K], V: Value[V]): IntervalMap[K, V] = IntervalMap.or(lhs, rhs)
 
   def mapValues[V2: Eq](f: V => V2): IntervalMap[K, V2]
 
-  def entries(implicit o: Order[K], v: Value[V]): Traversable[(Interval[K], V)]
+  def entries(implicit o: Order[K], v: Eq[V]): Traversable[(Interval[K], V)]
 
   def values(implicit v: Value[V]): V
 }
@@ -47,7 +51,6 @@ private[interval] trait IntervalMap0 {
 object IntervalMap extends IntervalMap0 {
 
   implicit def eqv[K: Order, V: Eq]: Eq[IntervalMap[K, V]] = new Eq[IntervalMap[K, V]] {
-
     def eqv(x: IntervalMap[K, V], y: IntervalMap[K, V]) = x == y
   }
 
@@ -83,8 +86,6 @@ object IntervalMap extends IntervalMap0 {
   }
 
   object Value {
-
-    implicit def apply[V: Value]: Value[V] = implicitly[Value[V]]
 
     implicit object booleanIsValue extends Value[Boolean] {
 
@@ -153,6 +154,8 @@ object IntervalMap extends IntervalMap0 {
 
       def eqv(x: T, y: T) = e.eqv(x, y)
     }
+
+    implicit def apply[V: Value]: Value[V] = implicitly[Value[V]]
   }
 
   private[interval] def unsafeAccess[K, V](belowAll: V, edges: Array[IntervalMap.Edge[K, V]]): IntervalMap[K, V] =
@@ -179,6 +182,62 @@ object IntervalMap extends IntervalMap0 {
     }
     // $COVERAGE-ON$
 
+    private def binarySearch(key: K)(implicit K: Order[K]): Int = {
+      var low = 0
+      var high = edges.length - 1
+      while (low <= high) {
+        val mid = (low + high) >>> 1
+        val midVal = edges(mid).x
+        val c = K.compare(midVal, key)
+        if (c < 0) {
+          low = mid + 1
+        }
+        else if (c > 0) {
+          high = mid - 1
+        }
+        else {
+          // scalastyle:off return
+          return mid
+          // scalastyle:on return
+        }
+      }
+      -(low + 1)
+    }
+
+    private def belowIndex(index: Int)(implicit K: Order[K]): V =
+      if (index == 0)
+        belowAll
+      else
+        edges(index - 1).above
+
+    def at(value: K)(implicit K: Order[K]): V = {
+      val index = binarySearch(value)
+      if (index >= 0)
+        edges(index).at
+      else
+        belowIndex(-index - 1)
+    }
+
+    def above(value: K)(implicit K: Order[K]): V = {
+      val index = binarySearch(value)
+      if (index >= 0)
+        edges(index).above
+      else
+        belowIndex(-index - 1)
+    }
+
+    def below(value: K)(implicit K: Order[K]): V = {
+      val index = binarySearch(value)
+      if (index > 0)
+        edges(index - 1).above
+      else if (index == 0)
+        belowAll
+      else
+        belowIndex(-index - 1)
+    }
+
+    def apply(value: K)(implicit K: Order[K]) = at(value)
+
     override def equals(rhs: Any) = rhs match {
       case rhs: Impl[K, V] =>
         lhs.belowAll == rhs.belowAll && lhs.edges === rhs.edges
@@ -194,14 +253,22 @@ object IntervalMap extends IntervalMap0 {
     override def hashCode: Int =
       (belowAll.hashCode, edges.toIndexedSeq.hashCode).hashCode
 
-    override def toString: String =
-      s"IntervalMap($belowAll, ${edges.toIndexedSeq})"
+    def format(implicit K: Order[K], v: Eq[V]): String =
+      entries
+        .map { case (k, v) => s"$k -> $v" }
+        .mkString("IntervalMap(", ",", ")")
 
-    def entries(implicit ev0: Order[K], ev1: Value[V]) = new AbstractTraversable[(Interval[K], V)] {
+    override def toString: String = {
+      val dummyOrder: Order[K] = new Order[K] { def compare(x: K, y: K) = 0 }
+      val dummyEq: Eq[V] = new Eq[V] { def eqv(x: V, y: V) = false }
+      format(dummyOrder, dummyEq)
+    }
+
+    def entries(implicit ev0: Order[K], ev1: Eq[V]) = new AbstractTraversable[(Interval[K], V)] {
       override def foreach[U](f: ((Interval[K], V)) => U): Unit = foreachInterval(f)
     }
 
-    private def foreachInterval[U](f: ((Interval[K], V)) => U)(implicit o: Order[K], v: Value[V]): Unit = {
+    private def foreachInterval[U](f: ((Interval[K], V)) => U)(implicit o: Order[K], v: Eq[V]): Unit = {
       var prevBound: Bound[K] = Unbound[K]()
       var prevValue: V = belowAll
       for(c <- edges) {
@@ -344,12 +411,12 @@ object IntervalMap extends IntervalMap0 {
       if (vv.isZero(value)) zero
       else IntervalMap(value, Array(Edge(x, vv.zero, vv.zero)))
 
-    def apply[K: Order, V: Value](iv: (Interval[K], V)*): IntervalMap[K, V] = {
+    def apply[K: Order, V: Value: Eq](iv: (Interval[K], V)*): IntervalMap[K, V] = {
       val singles = iv.map { case (i, v) ⇒ apply(i, v) }
       Reducer.reduce(singles)(_ | _).getOrElse(zero)
     }
 
-    def apply[K, V](interval: Interval[K], value: V)(implicit vv: Value[V]): IntervalMap[K, V] = if (vv.isZero(value)) zero
+    def apply[K, V](interval: Interval[K], value: V)(implicit vv: Value[V], ve: Eq[V]): IntervalMap[K, V] = if (vv.isZero(value)) zero
     else {
       interval.fold {
         case (Closed(a), Closed(b)) if a == b => point(a, value)
@@ -561,6 +628,15 @@ object IntervalMap extends IntervalMap0 {
 
     def vValue: Value[V]
   }
+
+  private def and[K: Order, V: Value](lhs: IntervalMap[K, V], rhs: IntervalMap[K, V]): IntervalMap[K, V] =
+    new And[K, V](lhs, rhs).result
+
+  private def or[K: Order, V: Value](lhs: IntervalMap[K, V], rhs: IntervalMap[K, V]): IntervalMap[K, V] =
+    new Or[K, V](lhs, rhs).result
+
+  private def xor[K: Order, V: Value](lhs: IntervalMap[K, V], rhs: IntervalMap[K, V]): IntervalMap[K, V] =
+    new Xor[K, V](lhs, rhs).result
 
   private final class And[K, V](val lhs: Impl[K, V], val rhs: Impl[K, V])(implicit val kOrder: Order[K], val vValue: Value[V]) extends BooleanMergeOperation[K, V] {
     def op(a: V, b: V) =

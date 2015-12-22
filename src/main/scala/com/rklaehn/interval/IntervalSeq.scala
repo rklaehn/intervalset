@@ -40,7 +40,7 @@ final class IntervalSeq[T] private[interval] (
     -(low + 1)
   }
 
-  private def below(index: Int): Boolean = {
+  private def belowIndex(index: Int): Boolean = {
     if (index == 0)
       belowAll
     else
@@ -52,7 +52,7 @@ final class IntervalSeq[T] private[interval] (
     if (index >= 0)
       valueAt(kinds(index))
     else
-      below(-index - 1)
+      belowIndex(-index - 1)
   }
 
   def above(value: T): Boolean = {
@@ -60,7 +60,7 @@ final class IntervalSeq[T] private[interval] (
     if (index >= 0)
       valueAbove(kinds(index))
     else
-      below(-index - 1)
+      belowIndex(-index - 1)
   }
 
   def below(value: T): Boolean = {
@@ -70,7 +70,7 @@ final class IntervalSeq[T] private[interval] (
     else if (index == 0)
       belowAll
     else
-      below(-index - 1)
+      belowIndex(-index - 1)
   }
 
   def apply(value:T) = at(value)

@@ -1,7 +1,9 @@
 package com.rklaehn.interval
 
+import com.rklaehn.interval.IntervalMap.Value
 import org.scalacheck.Properties
 import org.scalacheck.Prop._
+import spire.algebra.Order
 import spire.implicits._
 
 import scala.collection.immutable.SortedSet
@@ -14,7 +16,7 @@ object SetIntervalMapCheck extends Properties("SetIntervalsSetConsistentWithInte
     IntervalMap.FromBool(x.intervals.toSeq.map(_ → SortedSet(value)): _*)
 
   private def toIntervalSeq(x: IntervalMap[Int, SortedSet[Int]], value: Int): IntervalSeq[Int] =
-    x.entries.filter(_._2.contains(value)).foldLeft(IntervalSeq.empty[Int]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
+    x.entries(Order[Int], Value[SortedSet[Int]]).filter(_._2.contains(value)).foldLeft(IntervalSeq.empty[Int]) { case (x, y) ⇒ x ^ IntervalSeq(y._1) }
 
   def toIntervalsSet(m: Map[Int, IntervalSeq[Int]]): IntervalMap[Int, SortedSet[Int]] = {
     val empty = IntervalMap.FromBool.zero[Int, SortedSet[Int]]
