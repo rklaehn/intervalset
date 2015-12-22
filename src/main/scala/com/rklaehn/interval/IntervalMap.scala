@@ -70,13 +70,19 @@ object IntervalMap extends IntervalMap0 {
     override def opInverse(a: IntervalMap[K, V], b: IntervalMap[K, V]) = IntervalMap.remove(a, b)
   }
 
-  trait Value[V] extends Eq[V] {
+  /**
+    * This does not implement Eq so it does not interfere with the default Eq instance
+    * @tparam V
+    */
+  trait Value[V] {
 
-    def zero: V
+    def eqv(a: V, b: V): Boolean
 
     def isOne(x: V): Boolean
 
     def isZero(x: V): Boolean
+
+    def zero: V
 
     def xor(a: V, b: V): V
 
