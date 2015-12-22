@@ -17,7 +17,7 @@ awake            |---------------|
 breakfast         ||
 work                |-------|
 dinner                       ||
-sleep     |-----|              |-|
+sleep     |-----|                |
 ```
 
 This can be encoded as an IntervalMap[Int, Set[String]] like this:
