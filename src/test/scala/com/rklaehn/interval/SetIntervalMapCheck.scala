@@ -1,9 +1,7 @@
 package com.rklaehn.interval
 
-import com.rklaehn.interval.IntervalMap.Value
 import org.scalacheck.Properties
 import org.scalacheck.Prop._
-import spire.algebra.Order
 import spire.implicits._
 
 import scala.collection.immutable.SortedSet
