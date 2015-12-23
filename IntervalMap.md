@@ -26,11 +26,15 @@ This can be encoded as an IntervalMap[Int, Set[String]] like this:
 import com.rklaehn.interval._
 import spire.math.Interval
 import spire.implicits._
-import IntervalMap.CreateFromBool._ // this is to choose which set of factory methods to use
 
-implicit def setEq[T] = spire.optional.genericEq.generic[Set[T]] // not sure why spire does not provide an instance by default...
+// this is to choose which set of factory methods to use
+import IntervalMap.CreateFromBool._
 
-val a = IntervalMap(Interval(8, 9) -> Set("breakfast")) // outside the given interval, the zero element Set.empty will be used
+// not sure why spire does not provide an instance by default...
+implicit def setEq[T] = spire.optional.genericEq.generic[Set[T]]
+
+ // outside the given interval, the zero element Set.empty will be used
+val a = IntervalMap(Interval(8, 9) -> Set("breakfast"))
 val b = IntervalMap(Interval(10, 18) -> Set("work"))
 val c = IntervalMap(Interval(19,20) -> Set("dinner"))
 val d = IntervalMap(Interval(7, 23) -> Set("awake"))
@@ -54,6 +58,15 @@ And more complex things like getting a subset of all activities
 scala> val eating = IntervalMap(Interval.all[Int] -> Set("breakfast", "dinner"))
 scala> (schedule & eating).entries.mkString
 res8: String = ((-∞, 8),Set())([8, 9],Set(breakfast))((9, 19),Set())([19, 20],Set(dinner))((20, ∞),Set())
+```
+
+Or restricting the timeline to a time interval
+
+```scala
+// this is not necessary of your value is a Bool. In that case, just use Bool[V].one
+val allValues = schedule.values.reduce(_ union _)
+val range = IntervalMap(Interval(10,11) -> allValues)
+val restricted = schedule & range
 ```
 
 ### Group operations
