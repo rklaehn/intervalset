@@ -69,7 +69,7 @@ val range = IntervalMap(Interval(10,11) -> allValues)
 val restricted = schedule & range
 ```
 
-### Group operations
+### Monoid/Group operations
 
 If you have a Monoid or Group for your value, usage is very similar. Imagine you have a number of activities and want to aggregate a scalar value such as power consumption for each of them:
 ```
@@ -85,11 +85,15 @@ This can be encoded as an IntervalMap[Int, Double] like this:
 import com.rklaehn.interval._
 import spire.math.Interval
 import spire.implicits._
-import IntervalMap.CreateFromMonoid._ // this is to choose which set of factory methods to use
 
-implicit def m: Monoid[Double] = implicitly[AdditiveMonoid[Double]].additive // use the additive monoid instance
+// this is to choose which set of factory methods to use
+import IntervalMap.CreateFromMonoid._
 
-val light    = IntervalMap(Interval(6, 19) -> 40.0) // outside the given interval, the zero element Set.empty will be used
+// use the additive monoid instance
+implicit def m: Monoid[Double] = implicitly[AdditiveMonoid[Double]].additive
+
+// outside the given interval, the zero element Set.empty will be used
+val light    = IntervalMap(Interval(6, 19) -> 40.0) 
 val washing  = IntervalMap(Interval(8, 10) -> 1000.0)
 val drying   = IntervalMap(Interval(10,14) -> 3000.0)
 val standby  = IntervalMap(Interval.all[Int] -> 10.0)
