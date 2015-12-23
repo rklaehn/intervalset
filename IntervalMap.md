@@ -56,8 +56,8 @@ And more complex things like getting a subset of all activities
 
 ```scala
 scala> val eating = IntervalMap(Interval.all[Int] -> Set("breakfast", "dinner"))
-scala> (schedule & eating).entries.mkString
-res8: String = ((-∞, 8),Set())([8, 9],Set(breakfast))((9, 19),Set())([19, 20],Set(dinner))((20, ∞),Set())
+scala> (schedule & eating).entries.filterNot(_._2.isEmpty).mkString
+res6: String = ([8, 9],Set(breakfast))([19, 20],Set(dinner))
 ```
 
 Or restricting the timeline to a time interval
