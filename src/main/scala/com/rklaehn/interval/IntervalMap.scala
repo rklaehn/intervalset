@@ -35,9 +35,18 @@ sealed abstract class IntervalMap[K, V] { lhs ⇒
 
   def mapValues[V2: Eq](f: V => V2): IntervalMap[K, V2]
 
-  def entries(implicit o: Order[K], v: Eq[V]): Traversable[(Interval[K], V)]
+  /**
+    * Allows traversing over all keys (places where values change)
+    */
+  def keys: Traversable[K]
 
-  def values(implicit v: Value[V]): V
+  /**
+    * Allows traversing over all values. Note that the number of values is not the same as the number of keys or entries
+    * There will always be at least one value (belowAll)
+    */
+  def values: Traversable[V]
+
+  def entries(implicit o: Order[K], v: Eq[V]): Traversable[(Interval[K], V)]
 }
 
 private[interval] trait IntervalMap0 {
@@ -164,9 +173,6 @@ object IntervalMap extends IntervalMap0 {
     implicit def apply[V: Value]: Value[V] = implicitly[Value[V]]
   }
 
-  private[interval] def unsafeAccess[K, V](belowAll: V, edges: Array[IntervalMap.Edge[K, V]]): IntervalMap[K, V] =
-    new Impl(belowAll, edges)
-
   private implicit def intervalsSetIsImpl[K, V](x: IntervalMap[K, V]): Impl[K, V] =
     x.asInstanceOf[Impl[K, V]]
 
@@ -251,11 +257,6 @@ object IntervalMap extends IntervalMap0 {
         false
     }
 
-    def values(implicit v: Value[V]) = edges.foldLeft(belowAll) {
-      case (a, c) ⇒
-        v.or(a, v.or(c.at, c.above))
-    }
-
     override def hashCode: Int =
       (belowAll.hashCode, edges.toIndexedSeq.hashCode).hashCode
 
@@ -272,6 +273,28 @@ object IntervalMap extends IntervalMap0 {
 
     def entries(implicit ev0: Order[K], ev1: Eq[V]) = new AbstractTraversable[(Interval[K], V)] {
       override def foreach[U](f: ((Interval[K], V)) => U): Unit = foreachInterval(f)
+    }
+
+    def values = new AbstractTraversable[V] {
+      override def foreach[U](f: V => U): Unit = foreachValue(f)
+    }
+
+    def keys = new AbstractTraversable[K] {
+      override def foreach[U](f: K => U): Unit = foreachKey(f)
+    }
+
+    private def foreachKey[U](f: K => U): Unit = {
+      for(edge <- edges) {
+        f(edge.x)
+      }
+    }
+
+    private def foreachValue[U](f: V => U): Unit = {
+      f(belowAll)
+      for(edge <- edges) {
+        f(edge.at)
+        f(edge.above)
+      }
     }
 
     private def foreachInterval[U](f: ((Interval[K], V)) => U)(implicit o: Order[K], v: Eq[V]): Unit = {
@@ -334,32 +357,25 @@ object IntervalMap extends IntervalMap0 {
 
   object FromMonoid {
 
-    def empty[K, V](implicit vb: Monoid[V]): IntervalMap[K, V] =
-      IntervalMap.constant(vb.id)
+    def empty[K, V](implicit vb: Monoid[V]): IntervalMap[K, V] = constant(vb.id)
 
     def point[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
-      if (vv.isId(value)) empty
-      else IntervalMap(vv.id, Array(Edge(x, value, vv.id)))
+      step1(vv.id, x, value, vv.id)
 
     def hole[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
-      if (vv.isId(value)) empty
-      else IntervalMap(value, Array(Edge(x, vv.id, value)))
+      step1(value, x, vv.id, value)
 
     def atOrAbove[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
-      if (vv.isId(value)) empty
-      else IntervalMap(vv.id, Array(Edge(x, value, value)))
+      step1(vv.id, x, value, value)
 
     def above[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
-      if (vv.isId(value)) empty
-      else IntervalMap(vv.id, Array(Edge(x, vv.id, value)))
+      step1(vv.id, x, vv.id, value)
 
     def atOrBelow[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
-      if (vv.isId(value)) empty
-      else IntervalMap(value, Array(Edge(x, value, vv.id)))
+      step1(value, x, value, vv.id)
 
     def below[K, V](x: K, value: V)(implicit vv: Monoid[V], ev: Eq[V]): IntervalMap[K, V] =
-      if (vv.isId(value)) empty
-      else IntervalMap(value, Array(Edge(x, vv.id, vv.id)))
+      step1(value, x, vv.id, vv.id)
 
     def apply[K: Order, V: Monoid: Eq](iv: (Interval[K], V)*): IntervalMap[K, V] = {
       val singles = iv.map { case (i, v) ⇒ apply(i, v) }
@@ -387,11 +403,11 @@ object IntervalMap extends IntervalMap0 {
 
   object FromBool {
 
+    def zero[K, V](implicit vv: Value[V]): IntervalMap[K, V] =
+      IntervalMap.constant(vv.zero)
+
     def one[K, V](implicit vb: Bool[V]): IntervalMap[K, V] =
       IntervalMap.constant(vb.one)
-
-    def zero[K, V](implicit vv: Value[V]): IntervalMap[K, V] =
-      IntervalMap(vv.zero, Array.empty[Edge[K, V]])
 
     def point[K, V](x: K, value: V)(implicit vv: Value[V]): IntervalMap[K, V] =
       if (vv.isZero(value)) zero
@@ -440,13 +456,13 @@ object IntervalMap extends IntervalMap0 {
     }
   }
 
-  private def step1[K, V](belowA: V, a: K, atA: V, aboveA: V)(implicit Eq: Eq[V]): IntervalMap[K, V] =
+  private[interval] def step1[K, V](belowA: V, a: K, atA: V, aboveA: V)(implicit Eq: Eq[V]): IntervalMap[K, V] =
     if(Eq.eqv(belowA, atA) && Eq.eqv(atA, aboveA))
       constant[K, V](belowA)
     else
       IntervalMap[K, V](belowA, Array(Edge(a, atA, aboveA)))
 
-  private def step2[K, V](belowA: V, a: K, atA: V, aboveA: V, b: K, atB: V, aboveB: V)(implicit Eq: Eq[V]): IntervalMap[K, V] = {
+  private[interval] def step2[K, V](belowA: V, a: K, atA: V, aboveA: V, b: K, atB: V, aboveB: V)(implicit Eq: Eq[V]): IntervalMap[K, V] = {
     if(Eq.eqv(belowA, atA) && Eq.eqv(atA, aboveA))
       step1(aboveA, b, atB, aboveB)
     else if(Eq.eqv(aboveA, atB) && Eq.eqv(atB, aboveB))
