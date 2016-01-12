@@ -8,7 +8,7 @@ import spire.std.any._
 object IntervalTrieSampleCheck extends Properties("IntervalSet.Sample") {
 
   // this will resolve to the Arbitrary instance for Boolean from scalacheck
-  implicit def arb = IntervalTrieArbitrary.arbitrary
+  implicit def arb = IntervalTrieArbitrary.arbIntervalTrie
 
   // a test that works by sampling the result at all relevant places and checks consistency with the boolean operation
   def unarySampleTest(a: IntervalTrie[Long], r: IntervalTrie[Long], op: Boolean => Boolean) = {

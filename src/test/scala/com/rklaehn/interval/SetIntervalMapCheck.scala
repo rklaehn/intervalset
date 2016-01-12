@@ -12,7 +12,7 @@ object SetIntervalMapCheck extends Properties("SetIntervalsSetConsistentWithInte
 
   implicit def sortedSet[T] = spire.optional.genericEq.generic[SortedSet[T]]
 
-  implicit val arb = IntervalSeqArbitrary.arbitrary
+  implicit val arb = IntervalSeqArbitrary.arbIntervalSeq
 
   private def toIntervalMap(x: IntervalSeq[Int], value: Int): IntervalMap[Int, SortedSet[Int]] =
     IntervalMap.FromBool(x.intervals.toSeq.map(_ → SortedSet(value)): _*)

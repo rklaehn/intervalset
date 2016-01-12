@@ -29,5 +29,5 @@ object IntervalTrieArbitrary {
     15 -> randomProfileXor(Long.MinValue, Long.MaxValue, size)
   )
 
-  val arbitrary = Arbitrary[IntervalTrie[Long]](randomProfileGen(3))
+  val arbIntervalTrie = Arbitrary[IntervalTrie[Long]](randomProfileGen(3))
 }

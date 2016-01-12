@@ -14,7 +14,7 @@ object IntervalMapArbitrary {
 
     def simpleGen: Gen[IntervalMap[Int, V]] = for {
       value <- arbitrary[V]
-      is <- IntervalSeqArbitrary.arbitrary.arbitrary
+      is <- IntervalSeqArbitrary.arbIntervalSeq.arbitrary
     } yield is.intervals.map(i => IntervalMap(i, value)).reduceOption(_ ^ _).getOrElse(IntervalMap.zero[Int, V])
 
     for {
@@ -30,7 +30,7 @@ object IntervalMapArbitrary {
 
     for {
       value <- arbitrary[V]
-      is <- IntervalSeqArbitrary.arbitrary.arbitrary
+      is <- IntervalSeqArbitrary.arbIntervalSeq.arbitrary
     } yield is.intervals.map(i => IntervalMap(i, value)).reduceOption(m.op).getOrElse(m.id)
   }
 

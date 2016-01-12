@@ -7,7 +7,7 @@ object IntervalTrieLogicLawsCheck extends Properties("IntervalTrie") with AddPro
 
   val algebra = IntervalTrie.algebra[Long]
 
-  val arb = IntervalTrieArbitrary.arbitrary
+  val arb = IntervalTrieArbitrary.arbIntervalTrie
 
   addProperties("LogicLaws", LogicLaws(algebra, arb).bool(algebra))
 }

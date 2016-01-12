@@ -8,7 +8,7 @@ object IntervalSeqLogicLawsCheck extends Properties("IntervalSeq") with AddPrope
 
   val algebra = IntervalSeq.algebra[Int]
 
-  val arb = IntervalSeqArbitrary.arbitrary
+  val arb = IntervalSeqArbitrary.arbIntervalSeq
 
   addProperties("LogicLaws", LogicLaws(algebra, arb).bool(algebra))
 }

@@ -10,7 +10,7 @@ import spire.std.any._
 object IntervalSeqSampleCheck extends Properties("IntervalSeq.Sample") {
 
   // this will resolve to the Arbitrary instance for Boolean from scalacheck
-  implicit def arb = IntervalSeqArbitrary.arbitrary
+  implicit def arb = IntervalSeqArbitrary.arbIntervalSeq
 
   // a test that works by sampling the result at all relevant places and checks consistency with the boolean operation
   def unarySampleTest(a: IntervalSeq[Int], r: IntervalSeq[Int], op: Boolean => Boolean) = {
