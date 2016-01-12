@@ -2,7 +2,7 @@ package com.rklaehn.interval
 
 import java.util.Arrays
 
-import spire.algebra.Order
+import spire.algebra.{Eq, Bool, Order}
 import spire.math.{Rational, Interval}
 import spire.math.interval._
 
@@ -204,6 +204,23 @@ final class IntervalSeq[T] private[interval] (
 }
 
 object IntervalSeq {
+
+  implicit def algebra[T: Order] = new Bool[IntervalSeq[T]] with Eq[IntervalSeq[T]] {
+
+    def eqv(x: IntervalSeq[T], y: IntervalSeq[T]) = x == y
+
+    def zero = IntervalSeq.empty[T]
+
+    def one = IntervalSeq.all[T]
+
+    def complement(a: IntervalSeq[T]) = ~a
+
+    def or(a: IntervalSeq[T], b: IntervalSeq[T]) = a | b
+
+    def and(a: IntervalSeq[T], b: IntervalSeq[T]) = a & b
+
+    override def xor(a: IntervalSeq[T], b: IntervalSeq[T]) = a ^ b
+  }
 
   def atOrAbove[T: Order](value: T) = singleton(false, value, K11)
 

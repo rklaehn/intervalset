@@ -44,7 +44,7 @@ class IntervalSeqTest extends FunSuite {
   }
 
   test("algebra") {
-    val algebra = IntervalSeqAlgebra.booleanAlgebra[Int]
+    val algebra = IntervalSeq.algebra[Int]
     val a = IntervalSeq.above(1)
     val b = IntervalSeq.below(1)
     assert((a ^ b) == algebra.xor(a, b))

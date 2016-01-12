@@ -1,7 +1,7 @@
 package com.rklaehn.interval
 
 import language.implicitConversions
-import spire.algebra.{ AdditiveMonoid, Order }
+import spire.algebra.{Eq, Bool, AdditiveMonoid, Order}
 import spire.math.interval._
 import spire.math._
 
@@ -11,6 +11,23 @@ import scala.collection.{ AbstractIterable, AbstractIterator, AbstractTraversabl
 sealed abstract class IntervalTrie[T] extends IntervalSet[T, IntervalTrie[T]]
 
 object IntervalTrie {
+
+  implicit def algebra[T: Element] = new Bool[IntervalTrie[T]] with Eq[IntervalTrie[T]] {
+
+    def eqv(x: IntervalTrie[T], y: IntervalTrie[T]) = x == y
+
+    def zero = IntervalTrie.empty[T]
+
+    def one = IntervalTrie.all[T]
+
+    def complement(a: IntervalTrie[T]) = ~a
+
+    def or(a: IntervalTrie[T], b: IntervalTrie[T]) = a | b
+
+    def and(a: IntervalTrie[T], b: IntervalTrie[T]) = a & b
+
+    override def xor(a: IntervalTrie[T], b: IntervalTrie[T]) = a ^ b
+  }
 
   trait Element[@specialized(Float, Int, Long, Double) T] {
 

@@ -134,7 +134,7 @@ class IntervalTrieTest extends FunSuite {
   }
 
   test("algebra") {
-    val algebra = IntervalTrieAlgebra.booleanAlgebra[Long]
+    val algebra = IntervalTrie.algebra[Long]
     val a = IntervalTrie.above(1L)
     val b = IntervalTrie.below(1L)
     assert((a ^ b) === algebra.xor(a, b))
