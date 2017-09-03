@@ -29,13 +29,13 @@ lazy val intervalsetSettings = Seq(
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomIncludeRepository := Function.const(false),
-  publishTo <<= version { v =>
+  publishTo := version { v =>
     val nexus = "https://oss.sonatype.org/"
     if (v.trim.endsWith("SNAPSHOT"))
       Some("Snapshots" at nexus + "content/repositories/snapshots")
     else
       Some("Releases" at nexus + "service/local/staging/deploy/maven2")
-  },
+  }.value,
   pomExtra :=
     <scm>
       <url>git@github.com:rklaehn/intervalset.git</url>
