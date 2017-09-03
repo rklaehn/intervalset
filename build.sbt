@@ -2,14 +2,14 @@ import ReleaseTransformations._
 
 lazy val intervalsetSettings = Seq(
   organization := "com.rklaehn",
-  scalaVersion := "2.11.7",
-  crossScalaVersions := Seq("2.10.5", "2.11.7"),
+  scalaVersion := "2.12.1",
+  crossScalaVersions := Seq("2.11.11", "2.12.1"),
   libraryDependencies ++= Seq(
     "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
-    "org.scalatest" %%% "scalatest" % "3.0.0-M7" % "test",
-    "org.spire-math" %% "spire" % "0.11.0",
-    "com.rklaehn" %% "sonicreducer" % "0.2.0",
-    "org.spire-math" %% "spire-laws" % "0.11.0" % "test",
+    "org.scalatest" %%% "scalatest" % "3.0.1" % "test",
+    "org.spire-math" %% "spire" % "0.13.0",
+    "com.rklaehn" %% "sonicreducer" % "0.5.0",
+    "org.spire-math" %% "spire-laws" % "0.13.0" % "test",
 
     // thyme
     "ichi.bench" % "thyme" % "0.1.1" % "test" from "https://github.com/Ichoran/thyme/raw/9ff531411e10c698855ade2e5bde77791dd0869a/Thyme.jar"
