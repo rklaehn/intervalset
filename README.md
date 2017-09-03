@@ -6,8 +6,8 @@ Two of these data structures have since been included into [spire-extras](https:
 
 [![Build Status](https://travis-ci.org/rklaehn/intervalset.png)](https://travis-ci.org/rklaehn/intervalset)
 [![codecov.io](http://codecov.io/github/rklaehn/intervalset/coverage.svg?branch=master)](http://codecov.io/github/rklaehn/intervalset?branch=master)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.rklaehn/intervalset_2.11/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.rklaehn/intervalset_2.11)
-[![Scaladoc](http://javadoc-badge.appspot.com/com.rklaehn/intervalset_2.11.svg?label=scaladoc)](http://javadoc-badge.appspot.com/com.rklaehn/intervalset_2.11)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.rklaehn/intervalset_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.rklaehn/intervalset_2.12)
+[![Scaladoc](http://javadoc-badge.appspot.com/com.rklaehn/intervalset_2.12.svg?label=scaladoc)](http://javadoc-badge.appspot.com/com.rklaehn/intervalset_2.12)
 
 This repository contains two data structures for sets of *non-overlapping* intervals. Boundaries are either inclusive or exclusive, so (0..2] is different to [1..2]. 
 
