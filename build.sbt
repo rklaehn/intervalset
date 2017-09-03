@@ -4,6 +4,7 @@ lazy val intervalsetSettings = Seq(
   organization := "com.rklaehn",
   scalaVersion := "2.12.1",
   crossScalaVersions := Seq("2.11.11", "2.12.1"),
+  resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
   libraryDependencies ++= Seq(
     "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
     "org.scalatest" %%% "scalatest" % "3.0.1" % "test",
@@ -12,7 +13,7 @@ lazy val intervalsetSettings = Seq(
     "org.spire-math" %% "spire-laws" % "0.13.0" % "test",
 
     // thyme
-    "ichi.bench" % "thyme" % "0.1.1" % "test" from "https://github.com/Ichoran/thyme/raw/9ff531411e10c698855ade2e5bde77791dd0869a/Thyme.jar"
+    "com.github.ichoran" %% "thyme" % "0.1.2-SNAPSHOT" % "test"
   ),
   scalacOptions ++= Seq(
     "-deprecation",
