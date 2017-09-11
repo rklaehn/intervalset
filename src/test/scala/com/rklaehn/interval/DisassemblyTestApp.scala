@@ -29,7 +29,9 @@ object DisassemblyTestApp {
     var i = 0
     var sum = 0L
     while(i < 100000) {
-      sum += levelAbove(i, i * 3 + 2)
+//      sum += levelAbove(i, i * 3 + 2)
+//      sum += maskAbove(i, 4)
+      sum += java.lang.Long.numberOfLeadingZeros(i)
       i += 1
     }
     println(sum)
