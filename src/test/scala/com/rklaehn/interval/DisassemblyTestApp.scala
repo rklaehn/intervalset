@@ -2,7 +2,7 @@ package com.rklaehn.interval
 
 import java.lang.Long.numberOfLeadingZeros
 
-object DisassemblyTestApp {
+object Methods {
 
   @noinline final def toPrefix(key: Long): Long = key - Long.MinValue
 
@@ -25,13 +25,16 @@ object DisassemblyTestApp {
   @noinline final def hasMatchAt(key: Long, prefix: Long, level: Byte) =
     maskAbove(key, level) == prefix
 
+}
+
+object DisassemblyTestApp {
+
   def main(args: Array[String]): Unit = {
+    import Methods._
     var i = 0
     var sum = 0L
     while(i < 100000) {
-//      sum += levelAbove(i, i * 3 + 2)
-//      sum += maskAbove(i, 4)
-      sum += java.lang.Long.numberOfLeadingZeros(i)
+      sum += levelAbove(i, i * 3 + 2)
       i += 1
     }
     println(sum)
