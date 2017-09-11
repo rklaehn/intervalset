@@ -1,4 +1,6 @@
 #!/bin/bash
+export PWD=`pwd`
+echo $PWD
 export CLASSPATH=''
 export CLASSPATH=/Users/rklaehn/projects_git/intervalset/.jvm/target/scala-2.12/classes/:$CLASSPATH
 export CLASSPATH=/Users/rklaehn/projects_git/intervalset/.jvm/target/scala-2.12/test-classes/:$CLASSPATH
