@@ -64,6 +64,15 @@ lazy val intervalsetSettings = Seq(
     ReleaseStep(action = Command.process("sonatypeReleaseAll", _)),
     pushChanges))
 
+lazy val refTreeSettings = Seq(
+  resolvers ++= Seq(
+    Resolver.bintrayRepo("stanch", "maven")
+//    Resolver.bintrayRepo("drdozer", "maven")
+  ),
+  libraryDependencies += "org.stanch" %% "reftree" % "1.1.2",
+  libraryDependencies += "com.rklaehn" %% "intervalset" % "0.2.0"
+)
+
 lazy val noPublish = Seq(
   publish := {},
   publishLocal := {},
@@ -81,3 +90,9 @@ lazy val intervalset = crossProject.crossType(CrossType.Pure).in(file("."))
 
 lazy val intervalsetJVM = intervalset.jvm
 lazy val intervalsetJS = intervalset.js
+
+lazy val reftreeVisualization = project.in(file("reftreeVisualization"))
+  .settings(name := "reftreeVisualization")
+  .settings(intervalsetSettings: _*)
+  .settings(refTreeSettings: _*)
+  .settings(noPublish: _*)
