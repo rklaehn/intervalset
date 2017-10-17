@@ -26,3 +26,7 @@ This repository contains two data structures for sets of *non-overlapping* inter
 ## QuickArrayMerge
 
 An utility to merge two sorted arrays with a close to optimal number of comparisons. This is what operations in IntervalSeq and IntervalMap are based on.
+
+## ScalaWorld presentation
+
+[Presentation at ScalaWorld 2017](https://www.youtube.com/watch?v=Lb07lshL4cw)
