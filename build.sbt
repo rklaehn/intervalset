@@ -3,7 +3,7 @@ import ReleaseTransformations._
 lazy val intervalsetSettings = Seq(
   organization := "com.rklaehn",
   scalaVersion := "2.12.1",
-  crossScalaVersions := Seq("2.11.11", "2.12.1"),
+  crossScalaVersions := Seq("2.12.1"),
   resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
   libraryDependencies ++= Seq(
     "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
