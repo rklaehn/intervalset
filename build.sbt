@@ -1,4 +1,5 @@
 import ReleaseTransformations._
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val intervalsetSettings = Seq(
   organization := "com.rklaehn",
@@ -75,7 +76,9 @@ lazy val root = project.in(file("."))
   .settings(intervalsetSettings: _*)
   .settings(noPublish: _*)
 
-lazy val intervalset = crossProject.crossType(CrossType.Pure).in(file("."))
+lazy val intervalset = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("."))
   .settings(name := "intervalset")
   .settings(intervalsetSettings: _*)
 
