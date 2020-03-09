@@ -8,7 +8,7 @@ lazy val intervalsetSettings = Seq(
   resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
   libraryDependencies ++= Seq(
     "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
-    "org.scalatest" %%% "scalatest" % "3.0.1" % "test",
+    "org.scalatest" %%% "scalatest" % "3.1.1" % "test",
     "org.spire-math" %% "spire" % "0.13.0",
     "com.rklaehn" %% "sonicreducer" % "0.5.0",
     "org.spire-math" %% "spire-laws" % "0.13.0" % "test",

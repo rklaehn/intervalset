@@ -1,11 +1,11 @@
 package com.rklaehn.interval
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import spire.algebra.Order
 import spire.math.interval.Closed
 import spire.math._
 
-class IntervalTrieTest extends FunSuite {
+class IntervalTrieTest extends AnyFunSuite {
 
   import IntervalTrie._
 
