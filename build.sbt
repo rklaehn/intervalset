@@ -1,13 +1,14 @@
 import ReleaseTransformations._
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val intervalsetSettings = Seq(
   organization := "com.rklaehn",
   scalaVersion := "2.12.1",
-  crossScalaVersions := Seq("2.11.11", "2.12.1"),
+  crossScalaVersions := Seq("2.12.1"),
   resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
   libraryDependencies ++= Seq(
     "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
-    "org.scalatest" %%% "scalatest" % "3.0.1" % "test",
+    "org.scalatest" %%% "scalatest" % "3.1.1" % "test",
     "org.spire-math" %% "spire" % "0.13.0",
     "com.rklaehn" %% "sonicreducer" % "0.5.0",
     "org.spire-math" %% "spire-laws" % "0.13.0" % "test",
@@ -75,7 +76,9 @@ lazy val root = project.in(file("."))
   .settings(intervalsetSettings: _*)
   .settings(noPublish: _*)
 
-lazy val intervalset = crossProject.crossType(CrossType.Pure).in(file("."))
+lazy val intervalset = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("."))
   .settings(name := "intervalset")
   .settings(intervalsetSettings: _*)
 

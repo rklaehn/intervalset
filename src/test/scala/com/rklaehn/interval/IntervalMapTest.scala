@@ -1,10 +1,10 @@
 package com.rklaehn.interval
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import spire.implicits._
 import spire.math.Interval
 
-class IntervalMapTest extends FunSuite {
+class IntervalMapTest extends AnyFunSuite {
   test("IntervalMap[Int, Bool]") {
     val a = IntervalMap.FromBool.above(1, true)
     val b = IntervalMap.FromBool.below(1, true)
